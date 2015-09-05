@@ -1,8 +1,10 @@
 # MongoDB input plugin for Embulk
 
+[![Build Status](https://travis-ci.org/hakobera/embulk-input-mongodb.svg)](https://travis-ci.org/hakobera/embulk-input-mongodb)
+
 MongoDB input plugin for Embulk loads records from MongoDB.
 
-**CAUTION:** this plugin does not support array and object fields, 
+**CAUTION:** this plugin does not support array and object fields,
 because embulk does not supported these types yet.
 But these types will be supported, so when it supported I add support these types.
 For more detail see following issues.
