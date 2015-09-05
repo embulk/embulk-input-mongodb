@@ -1,0 +1,19 @@
+in:
+  type: mongodb
+  uri: mongodb://localhost:27017/my_database
+  collection: "my_collection"
+  fields:
+    - { name: id, type: string }
+    - { name: name, type: string }
+    - { name: rank, type: long }
+  query: '{ rank: { $gte: 3 } }'
+  sort: '{ rank: -1 }'
+out:
+  type: file
+  path_prefix: ./tmp/full
+  file_ext: csv
+  formatter:
+    type: csv
+    header_line: true
+    charset: UTF-8
+    newline: CRLF

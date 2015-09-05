@@ -1,0 +1,16 @@
+in:
+  type: mongodb
+  uri: mongodb://localhost:27017/my_database
+  collection: "my_collection"
+  fields:
+    - { name: name, type: string }
+    - { name: rank, type: long }
+out:
+  type: file
+  path_prefix: ./tmp/basic
+  file_ext: csv
+  formatter:
+    type: csv
+    header_line: true
+    charset: UTF-8
+    newline: CRLF
