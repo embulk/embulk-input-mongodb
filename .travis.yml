@@ -1,0 +1,31 @@
+language: java
+
+jdk:
+  - oraclejdk8
+  - oraclejdk7
+  - openjdk7
+
+sudo: required
+
+install:
+  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+  - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+  - sudo apt-get update
+  - sudo apt-get install -y mongodb-org=3.0.6
+  - mongod -version
+  - curl --create-dirs -o ~/.embulk/bin/embulk -L "http://dl.embulk.org/embulk-latest.jar"
+  - chmod +x ~/.embulk/bin/embulk
+  - export PATH="$HOME/.embulk/bin:$PATH"
+  - embulk --version
+
+before_script:
+  - echo "Wait mongodb wakeup"
+  - sleep 10
+  - mongoimport --db my_database --collection my_collection --type json --drop src/test/resources/my_collection.jsonl
+  - ./gradlew package
+  - mkdir -p ./tmp
+
+script:
+  - embulk run -L . src/test/resources/basic.yml
+  - embulk run -L . src/test/resources/full.yml
+  - cmp tmp/full000.00.csv src/test/resources/full_expected.csv || exit 1

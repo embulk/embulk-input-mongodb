@@ -12,6 +12,8 @@ For more detail see following issues.
 
 ## Overview
 
+This plugin only works with embulk >= 0.7.4.
+
 * **Plugin type**: input
 * **Resume supported**: no
 * **Cleanup supported**: no
