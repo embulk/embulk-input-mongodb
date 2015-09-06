@@ -15,7 +15,7 @@ configurations {
     provided
 }
 
-version = "0.1.0"
+version = "0.1.1"
 
 dependencies {
     compile  "org.embulk:embulk-core:0.7.4"
@@ -61,8 +61,7 @@ Gem::Specification.new do |spec|
   spec.description   = %[Loads records from Mongodb.]
   spec.email         = ["hakobera@gmail.com"]
   spec.licenses      = ["MIT"]
-  # TODO set this: spec.homepage      = "https://github.com/hakobera/embulk-input-mongodb"
-
+  spec.homepage      = "https://github.com/hakobera/embulk-input-mongodb"
   spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
   spec.test_files    = spec.files.grep(%r"^(test|spec)/")
   spec.require_paths = ["lib"]
