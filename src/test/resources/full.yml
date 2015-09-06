@@ -6,8 +6,11 @@ in:
     - { name: id, type: string }
     - { name: name, type: string }
     - { name: rank, type: long }
+    - { name: value, type: double }
+    - { name: created_at, type: timestamp }
   query: '{ rank: { $gte: 3 } }'
   sort: '{ rank: -1 }'
+  batch_size: 100
 out:
   type: file
   path_prefix: ./tmp/full

@@ -1,9 +1,7 @@
 package org.embulk.input.mongodb;
 
-import com.google.common.base.Optional;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
-import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -29,6 +27,7 @@ import org.embulk.spi.Schema;
 import org.embulk.spi.SchemaConfig;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.type.Type;
+import org.slf4j.Logger;
 
 import java.util.List;
 
@@ -58,11 +57,13 @@ public class MongodbInputPlugin
 
         @Config("batch_size")
         @ConfigDefault("10000")
-        Optional<Integer> getBatchSize();
+        Integer getBatchSize();
 
         @ConfigInject
         public BufferAllocator getBufferAllocator();
     }
+
+    private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
@@ -96,28 +97,27 @@ public class MongodbInputPlugin
             PageOutput output)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        SchemaConfig fields = task.getFields();
         BufferAllocator allocator = task.getBufferAllocator();
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
 
         MongoDatabase db = connect(task);
         MongoCollection<Document> collection = db.getCollection(task.getCollection());
 
-        StringBuilder proj = new StringBuilder("[");
-        for (ColumnConfig c : fields.getColumns()) {
-            c.getName();
-        }
-        proj.append("}");
-
         Bson query = (Bson) JSON.parse(task.getQuery());
+        Bson projection = getProjection(task);
         Bson sort = (Bson) JSON.parse(task.getSort());
 
-        FindIterable<Document> iterable = collection
-                                        .find(query)
-                                        .sort(sort)
-                                        .batchSize(task.getBatchSize().get());
+        log.trace("query: {}", query);
+        log.trace("projection: {}", projection);
+        log.trace("sort: {}", sort);
 
-        MongoCursor<Document> cursor = iterable.iterator();
+        MongoCursor<Document> cursor = collection
+                                        .find(query)
+                                        .projection(projection)
+                                        .sort(sort)
+                                        .batchSize(task.getBatchSize())
+                                        .iterator();
+
         try {
             while (cursor.hasNext()) {
                 fetch(cursor, pageBuilder);
@@ -149,13 +149,7 @@ public class MongodbInputPlugin
         List<Column> columns = pageBuilder.getSchema().getColumns();
         for (Column c : columns) {
             Type t = c.getType();
-            String key = c.getName();
-
-            // 'id' is special alias key name of MongoDB ObjectId
-            // http://docs.mongodb.org/manual/reference/object-id/
-            if (key.equals("id")) {
-                key = "_id";
-            }
+            String key = normalize(c.getName());
 
             if (!doc.containsKey(key) || doc.get(key) == null) {
                 pageBuilder.setNull(c);
@@ -172,7 +166,7 @@ public class MongodbInputPlugin
                     break;
 
                 case "double":
-                    pageBuilder.setDouble(c, doc.getDouble(key));
+                    pageBuilder.setDouble(c, ((Number) doc.get(key)).doubleValue());
                     break;
 
                 case "string":
@@ -186,5 +180,32 @@ public class MongodbInputPlugin
             }
         }
         pageBuilder.addRecord();
+    }
+
+    private Bson getProjection(PluginTask task) {
+        SchemaConfig fields = task.getFields();
+        StringBuilder sb = new StringBuilder("{");
+        int l = fields.getColumnCount();
+
+        for (int i = 0; i < l; i++) {
+            ColumnConfig c = fields.getColumn(i);
+            if (i != 0) {
+                sb.append(",");
+            }
+            String key = normalize(c.getName());
+            sb.append(key).append(":1");
+        }
+        sb.append("}");
+
+        return (Bson) JSON.parse(sb.toString());
+    }
+
+    private String normalize(String key) {
+        // 'id' is special alias key name of MongoDB ObjectId
+        // http://docs.mongodb.org/manual/reference/object-id/
+        if (key.equals("id")) {
+            return "_id";
+        }
+        return key;
     }
 }
