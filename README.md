@@ -43,7 +43,7 @@ This plugin only works with embulk >= 0.7.4.
 ```yaml
 in:
   type: mongodb
-  uri: mongodb://myuser@mypassword:localhost:27017/my_database
+  uri: mongodb://myuser:mypassword@localhost:27017/my_database
   collection: "my_collection"
   fields:
     - { name: id, type: string }
@@ -57,7 +57,7 @@ in:
 ```yaml
 in:
   type: mongodb
-  uri: mongodb://myuser@mypassword:localhost:27017/my_database
+  uri: mongodb://myuser:mypassword@localhost:27017/my_database
   collection: "my_collection"
   fields:
     - { name: id, type: string }
