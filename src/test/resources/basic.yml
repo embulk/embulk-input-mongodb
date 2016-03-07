@@ -5,6 +5,7 @@ in:
   fields:
     - { name: name, type: string }
     - { name: rank, type: long }
+  sort: '{ rank: 1 }'
 out:
   type: file
   path_prefix: ./tmp/basic

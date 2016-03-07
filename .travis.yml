@@ -21,7 +21,7 @@ install:
   - sudo apt-get update
   - sudo apt-get install -y mongodb-org=3.0.6
   - mongod -version
-  - curl --create-dirs -o ~/.embulk/bin/embulk -L "http://dl.embulk.org/embulk-latest.jar"
+  - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.8.7.jar"
   - chmod +x ~/.embulk/bin/embulk
   - export PATH="$HOME/.embulk/bin:$PATH"
   - embulk --version
@@ -35,5 +35,6 @@ before_script:
 
 script:
   - embulk run -L . src/test/resources/basic.yml
+  - cmp tmp/basic000.00.csv src/test/resources/basic_expected.csv || exit 1
   - embulk run -L . src/test/resources/full.yml
   - cmp tmp/full000.00.csv src/test/resources/full_expected.csv || exit 1

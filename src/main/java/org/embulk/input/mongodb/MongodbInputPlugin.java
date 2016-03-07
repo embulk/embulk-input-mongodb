@@ -25,6 +25,7 @@ import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
 import org.embulk.spi.SchemaConfig;
+import org.embulk.spi.json.JsonParser;
 import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.type.Type;
 import org.slf4j.Logger;
@@ -145,6 +146,7 @@ public class MongodbInputPlugin
     }
 
     private void fetch(MongoCursor<Document> cursor, PageBuilder pageBuilder) {
+	    final JsonParser jsonParser = new JsonParser();
         Document doc = cursor.next();
         List<Column> columns = pageBuilder.getSchema().getColumns();
         for (Column c : columns) {
@@ -170,12 +172,17 @@ public class MongodbInputPlugin
                     break;
 
                 case "string":
-                // Enable output object like ObjectId as string, this is reason I don't use doc.getString(key).
-                pageBuilder.setString(c, doc.get(key).toString());
-                break;
+                    // Enable output object like ObjectId as string, this is reason I don't use doc.getString(key).
+                    pageBuilder.setString(c, doc.get(key).toString());
+                    break;
 
                 case "timestamp":
                     pageBuilder.setTimestamp(c, Timestamp.ofEpochMilli(doc.getDate(key).getTime()));
+                    break;
+
+                case "json":
+	                pageBuilder.setJson(c, jsonParser.parse(((Document) doc.get(key)).toJson()));
+					break;
                 }
             }
         }

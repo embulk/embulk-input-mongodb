@@ -8,6 +8,7 @@ in:
     - { name: rank, type: long }
     - { name: value, type: double }
     - { name: created_at, type: timestamp }
+    - { name: embeded, type: json }
   query: '{ rank: { $gte: 3 } }'
   sort: '{ rank: -1 }'
   batch_size: 100
