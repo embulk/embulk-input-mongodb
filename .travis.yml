@@ -7,13 +7,21 @@ jdk:
 
 sudo: required
 
+# Work around fix for buffer overflow error on OpenJDK7
+# ref: https://github.com/travis-ci/travis-ci/issues/5227#issuecomment-165131913
+before_install:
+  - cat /etc/hosts # optionally check the content *before*
+  - sudo hostname "$(hostname | cut -c1-63)"
+  - sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts | sudo tee /etc/hosts
+  - cat /etc/hosts # optionally check the content *after*
+
 install:
   - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-  - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+  - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
   - sudo apt-get update
-  - sudo apt-get install -y mongodb-org=3.0.6
+  - sudo apt-get install -y --force-yes mongodb-org
   - mongod -version
-  - curl --create-dirs -o ~/.embulk/bin/embulk -L "http://dl.embulk.org/embulk-latest.jar"
+  - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.8.8.jar"
   - chmod +x ~/.embulk/bin/embulk
   - export PATH="$HOME/.embulk/bin:$PATH"
   - embulk --version
@@ -27,5 +35,8 @@ before_script:
 
 script:
   - embulk run -L . src/test/resources/basic.yml
+  - cat tmp/basic000.00.csv
+  - cmp tmp/basic000.00.csv src/test/resources/basic_expected.csv || exit 1
   - embulk run -L . src/test/resources/full.yml
+  - cat tmp/full000.00.csv
   - cmp tmp/full000.00.csv src/test/resources/full_expected.csv || exit 1
