@@ -1,7 +1,7 @@
 { "_id": "55eae883689a08361045d64a", "name": "obj1", "rank": 1, "value": 1.1, "created_at": { "$date" : 1441533998786 }, "embeded": { "key": "value1" } }
 { "_id": "55eae883689a08361045d64b", "name": "obj2", "rank": 2, "value": 2.2, "created_at": { "$date" : 1441533988786 }, "embeded": { "key": "value2" } }
-{ "_id": "55eae883689a08361045d64c", "name": "obj3", "rank": 3, "value": 3.3, "created_at": { "$date" : 1441533978786 }, "embeded": { "key": "value3", "key2": "value3-2", "key3": ["v1", "v2"]} }
-{ "_id": "55eae883689a08361045d64d", "name": "obj4", "rank": 4, "value": 4.4, "created_at": { "$date" : 1441533968786 }, "embeded": { "key": "value4" } }
+{ "_id": "55eae883689a08361045d64c", "name": "obj3", "rank": 3, "value": 3.3, "created_at": { "$date" : 1441533978786 }, "embeded": { "key": ["v3-1", "v3-2"]} }
+{ "_id": "55eae883689a08361045d64d", "name": "obj4", "rank": 4, "value": 4.4, "created_at": { "$date" : 1441533968786 }, "embeded": { "key": { "inner_key": "value4" } } }
 { "_id": "55eae883689a08361045d64e", "name": "obj5", "rank": 5, "value": 5.5, "created_at": { "$date" : 1441533958786 }, "embeded": { "key": "value5" } }
 { "_id": "55eae883689a08361045d64f", "name": "obj6", "rank": 6, "value": 6.6, "created_at": { "$date" : 1441533948786 }, "embeded": { "key": "value6" } }
 { "_id": "55eae883689a08361045d650", "name": "obj7", "rank": 7, "value": 7.7, "created_at": { "$date" : 1441533938786 }, "embeded": { "key": "value7" } }
