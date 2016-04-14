@@ -129,8 +129,7 @@ public class MongodbInputPlugin
 
         pageBuilder.finish();
 
-        TaskReport report = Exec.newTaskReport();
-        return report;
+        return Exec.newTaskReport();
     }
 
     @Override
