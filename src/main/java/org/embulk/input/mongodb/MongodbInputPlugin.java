@@ -112,19 +112,15 @@ public class MongodbInputPlugin
         log.trace("projection: {}", projection);
         log.trace("sort: {}", sort);
 
-        MongoCursor<Document> cursor = collection
-                                        .find(query)
-                                        .projection(projection)
-                                        .sort(sort)
-                                        .batchSize(task.getBatchSize())
-                                        .iterator();
-
-        try {
+        try (MongoCursor<Document> cursor = collection
+                .find(query)
+                .projection(projection)
+                .sort(sort)
+                .batchSize(task.getBatchSize())
+                .iterator()) {
             while (cursor.hasNext()) {
                 fetch(cursor, pageBuilder);
             }
-        } finally {
-            cursor.close();
         }
 
         pageBuilder.finish();
