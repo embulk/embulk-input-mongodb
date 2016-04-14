@@ -1,7 +1,9 @@
 package org.embulk.input.mongodb;
 
+import com.google.common.base.Throwables;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -30,6 +32,7 @@ import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.type.Type;
 import org.slf4j.Logger;
 
+import java.net.UnknownHostException;
 import java.util.List;
 
 public class MongodbInputPlugin
@@ -103,8 +106,13 @@ public class MongodbInputPlugin
         JsonParser jsonParser = new JsonParser();
         List<Column> columns = pageBuilder.getSchema().getColumns();
 
-        MongoDatabase db = connect(task);
-        MongoCollection<Document> collection = db.getCollection(task.getCollection());
+        MongoCollection<Document> collection;
+        try {
+            MongoDatabase db = connect(task);
+            collection = db.getCollection(task.getCollection());
+        } catch (UnknownHostException | MongoException ex) {
+            throw new ConfigException(ex);
+        }
 
         Bson query = (Bson) JSON.parse(task.getQuery());
         Bson projection = getProjection(task);
@@ -123,6 +131,8 @@ public class MongodbInputPlugin
             while (cursor.hasNext()) {
                 fetch(cursor, pageBuilder, jsonParser, columns);
             }
+        } catch (MongoException ex) {
+            Throwables.propagate(ex);
         }
 
         pageBuilder.finish();
@@ -136,10 +146,14 @@ public class MongodbInputPlugin
         return Exec.newConfigDiff();
     }
 
-    private MongoDatabase connect(PluginTask task) {
+    private MongoDatabase connect(final PluginTask task) throws UnknownHostException, MongoException {
         MongoClientURI uri = new MongoClientURI(task.getUri());
         MongoClient mongoClient = new MongoClient(uri);
-        return mongoClient.getDatabase(uri.getDatabase());
+
+        MongoDatabase db = mongoClient.getDatabase(uri.getDatabase());
+        // Get collection count for throw Exception
+        db.getCollection(task.getCollection()).count();
+        return db;
     }
 
     private void fetch(MongoCursor<Document> cursor, PageBuilder pageBuilder,
