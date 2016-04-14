@@ -181,8 +181,8 @@ public class MongodbInputPlugin
                     break;
 
                 case "json":
-	                pageBuilder.setJson(c, jsonParser.parse(((Document) doc.get(key)).toJson()));
-					break;
+                    pageBuilder.setJson(c, jsonParser.parse(((Document) doc.get(key)).toJson()));
+                    break;
                 }
             }
         }
