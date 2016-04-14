@@ -13,6 +13,7 @@ import org.bson.conversions.Bson;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
+import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
@@ -74,6 +75,12 @@ public class MongodbInputPlugin
             InputPlugin.Control control)
     {
         PluginTask task = config.loadConfig(PluginTask.class);
+        // Connect once to throw ConfigException in earlier stage of excecution
+        try {
+            connect(task);
+        } catch (UnknownHostException | MongoException ex) {
+            throw new ConfigException(ex);
+        }
         Schema schema = task.getFields().toSchema();
         return resume(task.dump(), schema, 1, control);
     }
