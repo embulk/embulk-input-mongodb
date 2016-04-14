@@ -100,6 +100,7 @@ public class MongodbInputPlugin
         PluginTask task = taskSource.loadTask(PluginTask.class);
         BufferAllocator allocator = task.getBufferAllocator();
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
+        JsonParser jsonParser = new JsonParser();
 
         MongoDatabase db = connect(task);
         MongoCollection<Document> collection = db.getCollection(task.getCollection());
@@ -119,7 +120,7 @@ public class MongodbInputPlugin
                 .batchSize(task.getBatchSize())
                 .iterator()) {
             while (cursor.hasNext()) {
-                fetch(cursor, pageBuilder);
+                fetch(cursor, pageBuilder, jsonParser);
             }
         }
 
@@ -140,8 +141,7 @@ public class MongodbInputPlugin
         return mongoClient.getDatabase(uri.getDatabase());
     }
 
-    private void fetch(MongoCursor<Document> cursor, PageBuilder pageBuilder) {
-	    final JsonParser jsonParser = new JsonParser();
+    private void fetch(MongoCursor<Document> cursor, PageBuilder pageBuilder, JsonParser jsonParser) {
         Document doc = cursor.next();
         List<Column> columns = pageBuilder.getSchema().getColumns();
         for (Column c : columns) {
