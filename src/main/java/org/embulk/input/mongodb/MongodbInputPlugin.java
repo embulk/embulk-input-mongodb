@@ -61,7 +61,7 @@ public class MongodbInputPlugin
         Integer getBatchSize();
 
         @ConfigInject
-        public BufferAllocator getBufferAllocator();
+        BufferAllocator getBufferAllocator();
     }
 
     private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
