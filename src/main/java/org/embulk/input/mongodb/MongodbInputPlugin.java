@@ -1,7 +1,9 @@
 package org.embulk.input.mongodb;
 
+import com.google.common.base.Throwables;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -11,6 +13,7 @@ import org.bson.conversions.Bson;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
+import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.Task;
@@ -30,6 +33,7 @@ import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.type.Type;
 import org.slf4j.Logger;
 
+import java.net.UnknownHostException;
 import java.util.List;
 
 public class MongodbInputPlugin
@@ -61,7 +65,7 @@ public class MongodbInputPlugin
         Integer getBatchSize();
 
         @ConfigInject
-        public BufferAllocator getBufferAllocator();
+        BufferAllocator getBufferAllocator();
     }
 
     private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
@@ -71,6 +75,12 @@ public class MongodbInputPlugin
             InputPlugin.Control control)
     {
         PluginTask task = config.loadConfig(PluginTask.class);
+        // Connect once to throw ConfigException in earlier stage of excecution
+        try {
+            connect(task);
+        } catch (UnknownHostException | MongoException ex) {
+            throw new ConfigException(ex);
+        }
         Schema schema = task.getFields().toSchema();
         return resume(task.dump(), schema, 1, control);
     }
@@ -100,9 +110,16 @@ public class MongodbInputPlugin
         PluginTask task = taskSource.loadTask(PluginTask.class);
         BufferAllocator allocator = task.getBufferAllocator();
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
+        JsonParser jsonParser = new JsonParser();
+        List<Column> columns = pageBuilder.getSchema().getColumns();
 
-        MongoDatabase db = connect(task);
-        MongoCollection<Document> collection = db.getCollection(task.getCollection());
+        MongoCollection<Document> collection;
+        try {
+            MongoDatabase db = connect(task);
+            collection = db.getCollection(task.getCollection());
+        } catch (UnknownHostException | MongoException ex) {
+            throw new ConfigException(ex);
+        }
 
         Bson query = (Bson) JSON.parse(task.getQuery());
         Bson projection = getProjection(task);
@@ -112,25 +129,22 @@ public class MongodbInputPlugin
         log.trace("projection: {}", projection);
         log.trace("sort: {}", sort);
 
-        MongoCursor<Document> cursor = collection
-                                        .find(query)
-                                        .projection(projection)
-                                        .sort(sort)
-                                        .batchSize(task.getBatchSize())
-                                        .iterator();
-
-        try {
+        try (MongoCursor<Document> cursor = collection
+                .find(query)
+                .projection(projection)
+                .sort(sort)
+                .batchSize(task.getBatchSize())
+                .iterator()) {
             while (cursor.hasNext()) {
-                fetch(cursor, pageBuilder);
+                fetch(cursor, pageBuilder, jsonParser, columns);
             }
-        } finally {
-            cursor.close();
+        } catch (MongoException ex) {
+            Throwables.propagate(ex);
         }
 
         pageBuilder.finish();
 
-        TaskReport report = Exec.newTaskReport();
-        return report;
+        return Exec.newTaskReport();
     }
 
     @Override
@@ -139,16 +153,19 @@ public class MongodbInputPlugin
         return Exec.newConfigDiff();
     }
 
-    private MongoDatabase connect(PluginTask task) {
+    private MongoDatabase connect(final PluginTask task) throws UnknownHostException, MongoException {
         MongoClientURI uri = new MongoClientURI(task.getUri());
         MongoClient mongoClient = new MongoClient(uri);
-        return mongoClient.getDatabase(uri.getDatabase());
+
+        MongoDatabase db = mongoClient.getDatabase(uri.getDatabase());
+        // Get collection count for throw Exception
+        db.getCollection(task.getCollection()).count();
+        return db;
     }
 
-    private void fetch(MongoCursor<Document> cursor, PageBuilder pageBuilder) {
-	    final JsonParser jsonParser = new JsonParser();
+    private void fetch(MongoCursor<Document> cursor, PageBuilder pageBuilder,
+                       JsonParser jsonParser, List<Column> columns) {
         Document doc = cursor.next();
-        List<Column> columns = pageBuilder.getSchema().getColumns();
         for (Column c : columns) {
             Type t = c.getType();
             String key = normalize(c.getName());
@@ -181,8 +198,8 @@ public class MongodbInputPlugin
                     break;
 
                 case "json":
-	                pageBuilder.setJson(c, jsonParser.parse(((Document) doc.get(key)).toJson()));
-					break;
+                    pageBuilder.setJson(c, jsonParser.parse(((Document) doc.get(key)).toJson()));
+                    break;
                 }
             }
         }
