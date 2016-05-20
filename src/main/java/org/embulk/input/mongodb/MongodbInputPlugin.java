@@ -9,6 +9,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.util.JSON;
+import com.mongodb.util.JSONParseException;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
@@ -92,6 +93,10 @@ public class MongodbInputPlugin
         if (task.getFields().isPresent()) {
             throw new ConfigException("field option was deprecated so setting will be ignored");
         }
+
+        validateJsonField("projection", task.getProjection());
+        validateJsonField("query", task.getQuery());
+        validateJsonField("sort", task.getSort());
 
         // Connect once to throw ConfigException in earlier stage of excecution
         try {
@@ -185,5 +190,13 @@ public class MongodbInputPlugin
         // Get collection count for throw Exception
         db.getCollection(task.getCollection()).count();
         return db;
+    }
+
+    private void validateJsonField(String name, String jsonString) {
+        try {
+            JSON.parse(jsonString);
+        } catch (JSONParseException ex) {
+            throw new ConfigException(String.format("Invalid JSON string was given for '%s' parameter. [%s]", name, jsonString));
+        }
     }
 }
