@@ -33,6 +33,7 @@ import org.embulk.spi.time.Timestamp;
 import org.embulk.spi.type.Type;
 import org.slf4j.Logger;
 
+import javax.validation.constraints.Min;
 import java.net.UnknownHostException;
 import java.util.List;
 
@@ -62,7 +63,8 @@ public class MongodbInputPlugin
 
         @Config("batch_size")
         @ConfigDefault("10000")
-        Integer getBatchSize();
+        @Min(1)
+        int getBatchSize();
 
         @ConfigInject
         BufferAllocator getBufferAllocator();
