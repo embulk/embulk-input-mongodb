@@ -70,6 +70,10 @@ public class MongodbInputPlugin
         @Min(1)
         int getBatchSize();
 
+        @Config("stop_on_invalid_record")
+        @ConfigDefault("false")
+        boolean getStopOnInvalidRecord();
+
         @Config("json_column_name")
         @ConfigDefault("\"record\"")
         String getJsonColumnName();
@@ -132,7 +136,7 @@ public class MongodbInputPlugin
 
             CodecRegistry registry = CodecRegistries.fromRegistries(
                     MongoClient.getDefaultCodecRegistry(),
-                    CodecRegistries.fromCodecs(new ValueCodec())
+                    CodecRegistries.fromCodecs(new ValueCodec(task.getStopOnInvalidRecord()))
             );
             collection = db.getCollection(task.getCollection(), Value.class)
                     .withCodecRegistry(registry);

@@ -7,8 +7,10 @@ import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
 import org.embulk.spi.DataException;
-import org.embulk.spi.time.Timestamp;
+import org.embulk.spi.Exec;
 import org.msgpack.value.Value;
+import org.slf4j.Logger;
+
 import static org.msgpack.value.ValueFactory.newArray;
 import static org.msgpack.value.ValueFactory.newBinary;
 import static org.msgpack.value.ValueFactory.newBoolean;
@@ -27,12 +29,14 @@ import java.util.Map;
 import java.util.TimeZone;
 
 public class ValueCodec implements Codec<Value> {
-
     private final SimpleDateFormat formatter;
+    private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
+    private final boolean stopOnInvalidRecord;
 
-    public ValueCodec() {
+    public ValueCodec(boolean stopOnInvalidRecord) {
         this.formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.ENGLISH);
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        this.stopOnInvalidRecord = stopOnInvalidRecord;
     }
 
     @Override
@@ -53,7 +57,17 @@ public class ValueCodec implements Codec<Value> {
                 isTopLevelNode = true;
             }
             fieldName = normalize(fieldName, isTopLevelNode);
-            kvs.put(newString(fieldName), readValue(reader, decoderContext));
+
+            try {
+                kvs.put(newString(fieldName), readValue(reader, decoderContext));
+            } catch (UnknownTypeFoundException ex) {
+                reader.skipValue();
+                if (stopOnInvalidRecord) {
+                    throw ex;
+                }
+                log.warn(String.format("Skipped document because field '%s' contains unsupported object type [%s]",
+                        fieldName, type));
+            }
         }
         reader.readEndDocument();
 
