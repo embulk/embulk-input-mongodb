@@ -4,17 +4,9 @@
 
 MongoDB input plugin for Embulk loads records from MongoDB.
 
-**CAUTION:** this plugin does not support array and object fields,
-because embulk does not supported these types yet.
-But these types will be supported, so when it supported I add support these types.
-For more detail see following issues.
-
-- https://github.com/embulk/embulk/issues/120
-- https://github.com/embulk/embulk/issues/121
-
 ## Overview
 
-This plugin only works with embulk >= 0.7.4.
+This plugin only works with embulk >= 0.8.8.
 
 * **Plugin type**: input
 * **Resume supported**: no
@@ -49,10 +41,10 @@ in:
     - { name: id, type: string }
     - { name: field1, type: long }
     - { name: field2, type: timestamp }
+    - { name: field3, type: json }
 ```
 
 ### Filter object by query and sort
-
 
 ```yaml
 in:
@@ -63,6 +55,7 @@ in:
     - { name: id, type: string }
     - { name: field1, type: long }
     - { name: field2, type: timestamp }
+    - { name: field3, type: json }
   query: '{ field1: { $gte: 3 } }'
   sort: '{ field1: 1 }'
 ```
