@@ -2,9 +2,7 @@ in:
   type: mongodb
   uri: mongodb://localhost:27017/my_database
   collection: "my_collection"
-  fields:
-    - { name: name, type: string }
-    - { name: rank, type: long }
+  projection: '{ "_id": 0, "name": 1, "rank": 1 }'
   sort: '{ rank: 1 }'
 out:
   type: file

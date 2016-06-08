@@ -2,13 +2,7 @@ in:
   type: mongodb
   uri: mongodb://localhost:27017/my_database
   collection: "my_collection"
-  fields:
-    - { name: id, type: string }
-    - { name: name, type: string }
-    - { name: rank, type: long }
-    - { name: value, type: double }
-    - { name: created_at, type: timestamp }
-    - { name: embeded, type: json }
+  json_column_name: "json"
   query: '{ rank: { $gte: 3 } }'
   sort: '{ rank: -1 }'
   batch_size: 100

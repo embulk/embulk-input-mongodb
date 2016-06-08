@@ -1,5 +1,6 @@
 package org.embulk.input.mongodb;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -8,7 +9,9 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.util.JSON;
-import org.bson.Document;
+import com.mongodb.util.JSONParseException;
+import org.bson.codecs.configuration.CodecRegistries;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
@@ -21,18 +24,15 @@ import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.BufferAllocator;
 import org.embulk.spi.Column;
-import org.embulk.spi.ColumnConfig;
 import org.embulk.spi.Exec;
 import org.embulk.spi.InputPlugin;
 import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
 import org.embulk.spi.SchemaConfig;
-import org.embulk.spi.json.JsonParser;
-import org.embulk.spi.time.Timestamp;
-import org.embulk.spi.type.Type;
+import org.embulk.spi.type.Types;
+import org.msgpack.value.Value;
 import org.slf4j.Logger;
-
 import javax.validation.constraints.Min;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -51,7 +51,12 @@ public class MongodbInputPlugin
         String getCollection();
 
         @Config("fields")
-        SchemaConfig getFields();
+        @ConfigDefault("null")
+        Optional<SchemaConfig> getFields();
+
+        @Config("projection")
+        @ConfigDefault("\"{}\"")
+        String getProjection();
 
         @Config("query")
         @ConfigDefault("\"{}\"")
@@ -66,6 +71,14 @@ public class MongodbInputPlugin
         @Min(1)
         int getBatchSize();
 
+        @Config("stop_on_invalid_record")
+        @ConfigDefault("false")
+        boolean getStopOnInvalidRecord();
+
+        @Config("json_column_name")
+        @ConfigDefault("\"record\"")
+        String getJsonColumnName();
+
         @ConfigInject
         BufferAllocator getBufferAllocator();
     }
@@ -77,13 +90,21 @@ public class MongodbInputPlugin
             InputPlugin.Control control)
     {
         PluginTask task = config.loadConfig(PluginTask.class);
+        if (task.getFields().isPresent()) {
+            throw new ConfigException("field option was deprecated so setting will be ignored");
+        }
+
+        validateJsonField("projection", task.getProjection());
+        validateJsonField("query", task.getQuery());
+        validateJsonField("sort", task.getSort());
+
         // Connect once to throw ConfigException in earlier stage of excecution
         try {
             connect(task);
         } catch (UnknownHostException | MongoException ex) {
             throw new ConfigException(ex);
         }
-        Schema schema = task.getFields().toSchema();
+        Schema schema = Schema.builder().add(task.getJsonColumnName(), Types.JSON).build();
         return resume(task.dump(), schema, 1, control);
     }
 
@@ -112,33 +133,39 @@ public class MongodbInputPlugin
         PluginTask task = taskSource.loadTask(PluginTask.class);
         BufferAllocator allocator = task.getBufferAllocator();
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
-        JsonParser jsonParser = new JsonParser();
-        List<Column> columns = pageBuilder.getSchema().getColumns();
+        final Column column = pageBuilder.getSchema().getColumns().get(0);
 
-        MongoCollection<Document> collection;
+        MongoCollection<Value> collection;
         try {
             MongoDatabase db = connect(task);
-            collection = db.getCollection(task.getCollection());
+
+            CodecRegistry registry = CodecRegistries.fromRegistries(
+                    MongoClient.getDefaultCodecRegistry(),
+                    CodecRegistries.fromCodecs(new ValueCodec(task.getStopOnInvalidRecord()))
+            );
+            collection = db.getCollection(task.getCollection(), Value.class)
+                    .withCodecRegistry(registry);
         } catch (UnknownHostException | MongoException ex) {
             throw new ConfigException(ex);
         }
 
         Bson query = (Bson) JSON.parse(task.getQuery());
-        Bson projection = getProjection(task);
+        Bson projection = (Bson) JSON.parse(task.getProjection());
         Bson sort = (Bson) JSON.parse(task.getSort());
 
         log.trace("query: {}", query);
         log.trace("projection: {}", projection);
         log.trace("sort: {}", sort);
 
-        try (MongoCursor<Document> cursor = collection
+        try (MongoCursor<Value> cursor = collection
                 .find(query)
                 .projection(projection)
                 .sort(sort)
                 .batchSize(task.getBatchSize())
                 .iterator()) {
             while (cursor.hasNext()) {
-                fetch(cursor, pageBuilder, jsonParser, columns);
+                pageBuilder.setJson(column, cursor.next());
+                pageBuilder.addRecord();
             }
         } catch (MongoException ex) {
             Throwables.propagate(ex);
@@ -165,73 +192,11 @@ public class MongodbInputPlugin
         return db;
     }
 
-    private void fetch(MongoCursor<Document> cursor, PageBuilder pageBuilder,
-                       JsonParser jsonParser, List<Column> columns) {
-        Document doc = cursor.next();
-        for (Column c : columns) {
-            Type t = c.getType();
-            String key = normalize(c.getName());
-
-            if (!doc.containsKey(key) || doc.get(key) == null) {
-                pageBuilder.setNull(c);
-            } else {
-                switch (t.getName()) {
-                case "boolean":
-                    pageBuilder.setBoolean(c, doc.getBoolean(key));
-                    break;
-
-                case "long":
-                    // MongoDB can contain both 'int' and 'long', but embulk only support 'long'
-                    // So enable handling both 'int' and 'long', first get value as java.lang.Number, then convert it to long
-                    pageBuilder.setLong(c, ((Number) doc.get(key)).longValue());
-                    break;
-
-                case "double":
-                    pageBuilder.setDouble(c, ((Number) doc.get(key)).doubleValue());
-                    break;
-
-                case "string":
-                    // Enable output object like ObjectId as string, this is reason I don't use doc.getString(key).
-                    pageBuilder.setString(c, doc.get(key).toString());
-                    break;
-
-                case "timestamp":
-                    pageBuilder.setTimestamp(c, Timestamp.ofEpochMilli(doc.getDate(key).getTime()));
-                    break;
-
-                case "json":
-                    pageBuilder.setJson(c, jsonParser.parse(((Document) doc.get(key)).toJson()));
-                    break;
-                }
-            }
+    private void validateJsonField(String name, String jsonString) {
+        try {
+            JSON.parse(jsonString);
+        } catch (JSONParseException ex) {
+            throw new ConfigException(String.format("Invalid JSON string was given for '%s' parameter. [%s]", name, jsonString));
         }
-        pageBuilder.addRecord();
-    }
-
-    private Bson getProjection(PluginTask task) {
-        SchemaConfig fields = task.getFields();
-        StringBuilder sb = new StringBuilder("{");
-        int l = fields.getColumnCount();
-
-        for (int i = 0; i < l; i++) {
-            ColumnConfig c = fields.getColumn(i);
-            if (i != 0) {
-                sb.append(",");
-            }
-            String key = normalize(c.getName());
-            sb.append(key).append(":1");
-        }
-        sb.append("}");
-
-        return (Bson) JSON.parse(sb.toString());
-    }
-
-    private String normalize(String key) {
-        // 'id' is special alias key name of MongoDB ObjectId
-        // http://docs.mongodb.org/manual/reference/object-id/
-        if (key.equals("id")) {
-            return "_id";
-        }
-        return key;
     }
 }
