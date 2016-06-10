@@ -44,7 +44,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class TestMongodbInputPlugin {
+public class TestMongodbInputPlugin
+{
     private static String MONGO_URI;
     private static String MONGO_COLLECTION;
 
@@ -64,20 +65,23 @@ public class TestMongodbInputPlugin {
      *   MONGO_COLLECTION
      */
     @BeforeClass
-    public static void initializeConstant() {
+    public static void initializeConstant()
+    {
         MONGO_URI = System.getenv("MONGO_URI");
         MONGO_COLLECTION = System.getenv("MONGO_COLLECTION");
     }
 
     @Before
-    public void createResources() throws Exception {
+    public void createResources() throws Exception
+    {
         config = config();
         plugin = new MongodbInputPlugin();
         output = new MockPageOutput();
     }
 
     @Test
-    public void checkDefaultValues() {
+    public void checkDefaultValues()
+    {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", MONGO_COLLECTION);
@@ -90,7 +94,8 @@ public class TestMongodbInputPlugin {
     }
 
     @Test(expected = ConfigException.class)
-    public void checkDefaultValuesUriIsNull() {
+    public void checkDefaultValuesUriIsNull()
+    {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", null)
                 .set("collection", MONGO_COLLECTION);
@@ -109,7 +114,8 @@ public class TestMongodbInputPlugin {
     }
 
     @Test(expected = ConfigException.class)
-    public void checkDefaultValuesCollectionIsNull() {
+    public void checkDefaultValuesCollectionIsNull()
+    {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", null);
@@ -118,12 +124,14 @@ public class TestMongodbInputPlugin {
     }
 
     @Test
-    public void testResume() {
+    public void testResume()
+    {
         PluginTask task = config.loadConfig(PluginTask.class);
         final Schema schema = getFieldSchema();
         plugin.resume(task.dump(), schema, 0, new InputPlugin.Control() {
             @Override
-            public List<TaskReport> run(TaskSource taskSource, Schema schema, int taskCount) {
+            public List<TaskReport> run(TaskSource taskSource, Schema schema, int taskCount)
+            {
                 return emptyTaskReports(taskCount);
             }
         });
@@ -131,19 +139,22 @@ public class TestMongodbInputPlugin {
     }
 
     @Test
-    public void testCleanup() {
+    public void testCleanup()
+    {
         PluginTask task = config.loadConfig(PluginTask.class);
         Schema schema = getFieldSchema();
         plugin.cleanup(task.dump(), schema, 0, Lists.<TaskReport>newArrayList()); // no errors happens
     }
 
     @Test
-    public void testGuess() {
+    public void testGuess()
+    {
         plugin.guess(config); // no errors happens
     }
 
     @Test
-    public void testRun() throws Exception {
+    public void testRun() throws Exception
+    {
         PluginTask task = config.loadConfig(PluginTask.class);
 
         dropCollection(task, MONGO_COLLECTION);
@@ -155,7 +166,8 @@ public class TestMongodbInputPlugin {
     }
 
     @Test(expected = ValueCodec.UnknownTypeFoundException.class)
-    public void testRunWithUnsupportedType() throws Exception {
+    public void testRunWithUnsupportedType() throws Exception
+    {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", MONGO_COLLECTION)
@@ -176,7 +188,8 @@ public class TestMongodbInputPlugin {
     }
 
     @Test
-    public void testNormalize() throws Exception {
+    public void testNormalize() throws Exception
+    {
         ValueCodec codec = new ValueCodec(true);
 
         Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class, boolean.class);
@@ -191,18 +204,21 @@ public class TestMongodbInputPlugin {
     }
 
     @Test
-    public void testValidateJsonField() throws Exception {
+    public void testValidateJsonField() throws Exception
+    {
         Method validate = MongodbInputPlugin.class.getDeclaredMethod("validateJsonField", String.class, String.class);
         validate.setAccessible(true);
         String invalidJsonString = "{\"name\": invalid}";
         try {
             validate.invoke(plugin, "name", invalidJsonString);
-        } catch (InvocationTargetException ex) {
+        }
+        catch (InvocationTargetException ex) {
             assertEquals(ConfigException.class, ex.getCause().getClass());
         }
     }
 
-    static List<TaskReport> emptyTaskReports(int taskCount) {
+    static List<TaskReport> emptyTaskReports(int taskCount)
+    {
         ImmutableList.Builder<TaskReport> reports = new ImmutableList.Builder<>();
         for (int i = 0; i < taskCount; i++) {
             reports.add(Exec.newTaskReport());
@@ -211,9 +227,11 @@ public class TestMongodbInputPlugin {
     }
 
     private class Control
-            implements InputPlugin.Control {
+            implements InputPlugin.Control
+    {
         @Override
-        public List<TaskReport> run(TaskSource taskSource, Schema schema, int taskCount) {
+        public List<TaskReport> run(TaskSource taskSource, Schema schema, int taskCount)
+        {
             List<TaskReport> reports = new ArrayList<>();
             for (int i = 0; i < taskCount; i++) {
                 reports.add(plugin.run(taskSource, schema, i, output));
@@ -222,21 +240,23 @@ public class TestMongodbInputPlugin {
         }
     }
 
-    private ConfigSource config() {
+    private ConfigSource config()
+    {
         return Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", MONGO_COLLECTION)
                 .set("last_path", "");
     }
 
-    private List<Document> createValidDocuments() throws Exception {
+    private List<Document> createValidDocuments() throws Exception
+    {
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH);
 
         List<Document> documents = new ArrayList<>();
         documents.add(
             new Document("double_field", 1.23)
                     .append("string_field", "embulk")
-                    .append("array_field", Arrays.asList(1,2,3))
+                    .append("array_field", Arrays.asList(1, 2, 3))
                     .append("binary_field", new BsonBinary(("test").getBytes("UTF-8")))
                     .append("boolean_field", true)
                     .append("datetime_field", format.parse("2015-01-27T19:23:49Z"))
@@ -263,13 +283,15 @@ public class TestMongodbInputPlugin {
         return documents;
     }
 
-    private Schema getFieldSchema() {
+    private Schema getFieldSchema()
+    {
         ImmutableList.Builder<Column> columns = ImmutableList.builder();
         columns.add(new Column(0, "record", Types.JSON));
         return new Schema(columns.build());
     }
 
-    private void assertValidRecords(Schema schema, MockPageOutput output) throws Exception {
+    private void assertValidRecords(Schema schema, MockPageOutput output) throws Exception
+    {
         List<Object[]> records = Pages.toObjects(schema, output.pages);
         assertEquals(5, records.size());
 
@@ -314,14 +336,16 @@ public class TestMongodbInputPlugin {
         }
     }
 
-    private void createCollection(PluginTask task, String collectionName) throws Exception {
+    private void createCollection(PluginTask task, String collectionName) throws Exception
+    {
         Method method = MongodbInputPlugin.class.getDeclaredMethod("connect", PluginTask.class);
         method.setAccessible(true);
         MongoDatabase db = (MongoDatabase) method.invoke(plugin, task);
         db.createCollection(collectionName);
     }
 
-    private void dropCollection(PluginTask task, String collectionName) throws Exception {
+    private void dropCollection(PluginTask task, String collectionName) throws Exception
+    {
         Method method = MongodbInputPlugin.class.getDeclaredMethod("connect", PluginTask.class);
         method.setAccessible(true);
         MongoDatabase db = (MongoDatabase) method.invoke(plugin, task);
@@ -329,7 +353,8 @@ public class TestMongodbInputPlugin {
         collection.drop();
     }
 
-    private void insertDocument(PluginTask task, List<Document> documents) throws Exception {
+    private void insertDocument(PluginTask task, List<Document> documents) throws Exception
+    {
         Method method = MongodbInputPlugin.class.getDeclaredMethod("connect", PluginTask.class);
         method.setAccessible(true);
         MongoDatabase db = (MongoDatabase) method.invoke(plugin, task);
