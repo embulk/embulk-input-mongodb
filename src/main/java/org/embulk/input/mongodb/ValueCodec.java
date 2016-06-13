@@ -28,24 +28,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
-public class ValueCodec implements Codec<Value> {
+public class ValueCodec implements Codec<Value>
+{
     private final SimpleDateFormat formatter;
     private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
     private final boolean stopOnInvalidRecord;
 
-    public ValueCodec(boolean stopOnInvalidRecord) {
+    public ValueCodec(boolean stopOnInvalidRecord)
+    {
         this.formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.ENGLISH);
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         this.stopOnInvalidRecord = stopOnInvalidRecord;
     }
 
     @Override
-    public void encode(final BsonWriter writer, final Value value, final EncoderContext encoderContext) {
+    public void encode(final BsonWriter writer, final Value value, final EncoderContext encoderContext)
+    {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Value decode(final BsonReader reader, final DecoderContext decoderContext) {
+    public Value decode(final BsonReader reader, final DecoderContext decoderContext)
+    {
         Map<Value, Value> kvs = new LinkedHashMap<>();
 
         reader.readStartDocument();
@@ -60,7 +64,8 @@ public class ValueCodec implements Codec<Value> {
 
             try {
                 kvs.put(newString(fieldName), readValue(reader, decoderContext));
-            } catch (UnknownTypeFoundException ex) {
+            }
+            catch (UnknownTypeFoundException ex) {
                 reader.skipValue();
                 if (stopOnInvalidRecord) {
                     throw ex;
@@ -74,7 +79,8 @@ public class ValueCodec implements Codec<Value> {
         return newMap(kvs);
     }
 
-    public Value decodeArray(final BsonReader reader, final DecoderContext decoderContext) {
+    public Value decodeArray(final BsonReader reader, final DecoderContext decoderContext)
+    {
         List<Value> list = new ArrayList<>();
 
         reader.readStartArray();
@@ -86,7 +92,8 @@ public class ValueCodec implements Codec<Value> {
         return newArray(list);
     }
 
-    private Value readValue(BsonReader reader, DecoderContext decoderContext) {
+    private Value readValue(BsonReader reader, DecoderContext decoderContext)
+    {
         switch (reader.getCurrentBsonType()) {
             // https://docs.mongodb.com/manual/reference/bson-types/
             // https://github.com/mongodb/mongo-java-driver/tree/master/bson/src/main/org/bson/codecs
@@ -128,11 +135,13 @@ public class ValueCodec implements Codec<Value> {
     }
 
     @Override
-    public Class<Value> getEncoderClass() {
+    public Class<Value> getEncoderClass()
+    {
         return Value.class;
     }
 
-    private String normalize(String key, boolean isTopLevelNode) {
+    private String normalize(String key, boolean isTopLevelNode)
+    {
         // 'id' is special alias key name of MongoDB ObjectId
         // http://docs.mongodb.org/manual/reference/object-id/
         if (key.equals("id") && isTopLevelNode) {

@@ -33,7 +33,9 @@ import org.embulk.spi.SchemaConfig;
 import org.embulk.spi.type.Types;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+
 import javax.validation.constraints.Min;
+
 import java.net.UnknownHostException;
 import java.util.List;
 
@@ -101,7 +103,8 @@ public class MongodbInputPlugin
         // Connect once to throw ConfigException in earlier stage of excecution
         try {
             connect(task);
-        } catch (UnknownHostException | MongoException ex) {
+        }
+        catch (UnknownHostException | MongoException ex) {
             throw new ConfigException(ex);
         }
         Schema schema = Schema.builder().add(task.getJsonColumnName(), Types.JSON).build();
@@ -145,7 +148,8 @@ public class MongodbInputPlugin
             );
             collection = db.getCollection(task.getCollection(), Value.class)
                     .withCodecRegistry(registry);
-        } catch (UnknownHostException | MongoException ex) {
+        }
+        catch (UnknownHostException | MongoException ex) {
             throw new ConfigException(ex);
         }
 
@@ -182,7 +186,8 @@ public class MongodbInputPlugin
         return Exec.newConfigDiff();
     }
 
-    private MongoDatabase connect(final PluginTask task) throws UnknownHostException, MongoException {
+    private MongoDatabase connect(final PluginTask task) throws UnknownHostException, MongoException
+    {
         MongoClientURI uri = new MongoClientURI(task.getUri());
         MongoClient mongoClient = new MongoClient(uri);
 
@@ -192,10 +197,12 @@ public class MongodbInputPlugin
         return db;
     }
 
-    private void validateJsonField(String name, String jsonString) {
+    private void validateJsonField(String name, String jsonString)
+    {
         try {
             JSON.parse(jsonString);
-        } catch (JSONParseException ex) {
+        }
+        catch (JSONParseException ex) {
             throw new ConfigException(String.format("Invalid JSON string was given for '%s' parameter. [%s]", name, jsonString));
         }
     }
