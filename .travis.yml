@@ -40,3 +40,6 @@ script:
   - embulk run -L . src/test/resources/full.yml
   - cat tmp/full000.00.csv
   - cmp tmp/full000.00.csv src/test/resources/full_expected.csv || exit 1
+  - embulk run -L . src/test/resources/id_field_name.yml
+  - cat tmp/id_field_name000.00.csv
+  - cmp tmp/id_field_name000.00.csv src/test/resources/id_field_name_expected.csv || exit 1

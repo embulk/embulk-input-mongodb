@@ -24,6 +24,7 @@ This plugin only works with embulk >= 0.8.8.
     ~~- double~~
     ~~- string~~
     ~~- timestamp~~
+- **id_field_name** (string, optional, default: "_id") Name of Object ID field name. Set if you want to change the default name `_id` 
 - **query**: a JSON document used for [querying](https://docs.mongodb.com/manual/tutorial/query-documents/) on the source collection. Documents are loaded from the colleciton if they match with this condition. (string, optional)
 - **projection**: A JSON document used for [projection](https://docs.mongodb.com/manual/reference/operator/projection/positional/) on query results. Fields in a document are used only if they match with this condition. (string, optional)
 - **sort**: ordering of results (string, optional)

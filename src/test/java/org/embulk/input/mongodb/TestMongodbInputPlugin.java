@@ -190,17 +190,27 @@ public class TestMongodbInputPlugin
     @Test
     public void testNormalize() throws Exception
     {
-        ValueCodec codec = new ValueCodec(true);
+        PluginTask task = config.loadConfig(PluginTask.class);
+        ValueCodec codec = new ValueCodec(true, task);
 
         Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class, boolean.class);
         normalize.setAccessible(true);
-        assertEquals("_id", normalize.invoke(codec, "id", true).toString());
-        assertEquals("_id", normalize.invoke(codec, "_id", true).toString());
-        assertEquals("f1", normalize.invoke(codec, "f1", true).toString());
+        assertEquals("_id", normalize.invoke(codec, "_id").toString());
+        assertEquals("f1", normalize.invoke(codec, "f1").toString());
+    }
 
-        assertEquals("id", normalize.invoke(codec, "id", false).toString());
-        assertEquals("_id", normalize.invoke(codec, "_id", false).toString());
-        assertEquals("f1", normalize.invoke(codec, "f1", false).toString());
+    @Test
+    public void testNormlizeWithIdFieldName() throws Exception
+    {
+        ConfigSource config = config().set("id_field_name", "object_id");
+
+        PluginTask task = config.loadConfig(PluginTask.class);
+        ValueCodec codec = new ValueCodec(true, task);
+
+        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class, boolean.class);
+        normalize.setAccessible(true);
+        assertEquals("object_id", normalize.invoke(codec, "_id").toString());
+        assertEquals("f1", normalize.invoke(codec, "f1").toString());
     }
 
     @Test

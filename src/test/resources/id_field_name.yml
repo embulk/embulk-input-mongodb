@@ -1,0 +1,18 @@
+in:
+  type: mongodb
+  uri: mongodb://localhost:27017/my_database
+  collection: "my_collection"
+  json_column_name: "json"
+  query: '{ rank: { $gte: 3 } }'
+  sort: '{ rank: -1 }'
+  id_field_name: "object_id"
+  batch_size: 100
+out:
+  type: file
+  path_prefix: ./tmp/id_field_name
+  file_ext: csv
+  formatter:
+    type: csv
+    header_line: true
+    charset: UTF-8
+    newline: CRLF
