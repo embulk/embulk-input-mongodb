@@ -193,7 +193,7 @@ public class TestMongodbInputPlugin
         PluginTask task = config.loadConfig(PluginTask.class);
         ValueCodec codec = new ValueCodec(true, task);
 
-        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class, boolean.class);
+        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class);
         normalize.setAccessible(true);
         assertEquals("_id", normalize.invoke(codec, "_id").toString());
         assertEquals("f1", normalize.invoke(codec, "f1").toString());
@@ -207,7 +207,7 @@ public class TestMongodbInputPlugin
         PluginTask task = config.loadConfig(PluginTask.class);
         ValueCodec codec = new ValueCodec(true, task);
 
-        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class, boolean.class);
+        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class);
         normalize.setAccessible(true);
         assertEquals("object_id", normalize.invoke(codec, "_id").toString());
         assertEquals("f1", normalize.invoke(codec, "f1").toString());
@@ -254,8 +254,7 @@ public class TestMongodbInputPlugin
     {
         return Exec.newConfigSource()
                 .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
-                .set("last_path", "");
+                .set("collection", MONGO_COLLECTION);
     }
 
     private List<Document> createValidDocuments() throws Exception

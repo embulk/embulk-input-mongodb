@@ -5,7 +5,21 @@ jdk:
   - oraclejdk7
   - openjdk7
 
+env:
+  global:
+    - MONGO_DATABASE=my_database
+    - MONGO_COLLECTION=my_collection
+    - MONGO_URI=mongodb://localhost:27017/my_database
+
 sudo: required
+
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
 
 # Work around fix for buffer overflow error on OpenJDK7
 # ref: https://github.com/travis-ci/travis-ci/issues/5227#issuecomment-165131913
@@ -29,17 +43,17 @@ install:
 before_script:
   - echo "Wait mongodb wakeup"
   - sleep 10
-  - mongoimport --db my_database --collection my_collection --type json --drop src/test/resources/my_collection.jsonl
-  - ./gradlew package
   - mkdir -p ./tmp
 
 script:
-  - embulk run -L . src/test/resources/basic.yml
-  - cat tmp/basic000.00.csv
-  - cmp tmp/basic000.00.csv src/test/resources/basic_expected.csv || exit 1
-  - embulk run -L . src/test/resources/full.yml
-  - cat tmp/full000.00.csv
-  - cmp tmp/full000.00.csv src/test/resources/full_expected.csv || exit 1
-  - embulk run -L . src/test/resources/id_field_name.yml
-  - cat tmp/id_field_name000.00.csv
-  - cmp tmp/id_field_name000.00.csv src/test/resources/id_field_name_expected.csv || exit 1
+  - mongoimport --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
+  - ./gradlew check
+  - ./gradlew package
+  - mongoimport --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
+  - |
+    for target in basic full id_field_name
+    do
+      embulk run -L . src/test/resources/${target}.yml
+      cat tmp/${target}000.00.csv
+      cmp tmp/${target}000.00.csv src/test/resources/${target}_expected.csv
+    done

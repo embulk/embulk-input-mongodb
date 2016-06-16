@@ -50,6 +50,7 @@ public class ValueCodec implements Codec<Value>
         reader.readStartDocument();
         while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
             String fieldName = reader.readName();
+            BsonType type = reader.getCurrentBsonType();
             fieldName = normalize(fieldName);
 
             try {
@@ -60,7 +61,6 @@ public class ValueCodec implements Codec<Value>
                 if (stopOnInvalidRecord) {
                     throw ex;
                 }
-                BsonType type = reader.getCurrentBsonType();
                 log.warn(String.format("Skipped document because field '%s' contains unsupported object type [%s]",
                         fieldName, type));
             }
