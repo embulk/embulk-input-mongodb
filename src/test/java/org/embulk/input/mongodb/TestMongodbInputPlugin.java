@@ -541,7 +541,8 @@ public class TestMongodbInputPlugin
         collection.insertMany(documents);
     }
 
-    private DateFormat getUTCDateFormat() {
+    private DateFormat getUTCDateFormat()
+    {
       DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.ENGLISH);
       dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
       return dateFormat;

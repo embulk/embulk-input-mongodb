@@ -19,10 +19,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Locale;
 import java.util.TimeZone;
-
-import static org.msgpack.value.ValueFactory.*;
+import static org.msgpack.value.ValueFactory.newArray;
+import static org.msgpack.value.ValueFactory.newBinary;
+import static org.msgpack.value.ValueFactory.newBoolean;
+import static org.msgpack.value.ValueFactory.newFloat;
+import static org.msgpack.value.ValueFactory.newInteger;
+import static org.msgpack.value.ValueFactory.newMap;
+import static org.msgpack.value.ValueFactory.newNil;
+import static org.msgpack.value.ValueFactory.newString;
 
 public class ValueCodec implements Codec<Value>
 {
