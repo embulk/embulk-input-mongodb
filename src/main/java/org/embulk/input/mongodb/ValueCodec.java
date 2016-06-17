@@ -11,15 +11,6 @@ import org.embulk.spi.Exec;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
 
-import static org.msgpack.value.ValueFactory.newArray;
-import static org.msgpack.value.ValueFactory.newBinary;
-import static org.msgpack.value.ValueFactory.newBoolean;
-import static org.msgpack.value.ValueFactory.newFloat;
-import static org.msgpack.value.ValueFactory.newInteger;
-import static org.msgpack.value.ValueFactory.newMap;
-import static org.msgpack.value.ValueFactory.newNil;
-import static org.msgpack.value.ValueFactory.newString;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -28,17 +19,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
+import static org.msgpack.value.ValueFactory.*;
+
 public class ValueCodec implements Codec<Value>
 {
     private final SimpleDateFormat formatter;
     private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
     private final boolean stopOnInvalidRecord;
+    private final MongodbInputPlugin.PluginTask task;
 
-    public ValueCodec(boolean stopOnInvalidRecord)
+    public ValueCodec(boolean stopOnInvalidRecord, MongodbInputPlugin.PluginTask task)
     {
         this.formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.ENGLISH);
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         this.stopOnInvalidRecord = stopOnInvalidRecord;
+        this.task = task;
     }
 
     @Override
@@ -53,14 +48,10 @@ public class ValueCodec implements Codec<Value>
         Map<Value, Value> kvs = new LinkedHashMap<>();
 
         reader.readStartDocument();
-        boolean isTopLevelNode = false;
         while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
             String fieldName = reader.readName();
             BsonType type = reader.getCurrentBsonType();
-            if (type == BsonType.OBJECT_ID) {
-                isTopLevelNode = true;
-            }
-            fieldName = normalize(fieldName, isTopLevelNode);
+            fieldName = normalize(fieldName);
 
             try {
                 kvs.put(newString(fieldName), readValue(reader, decoderContext));
@@ -140,12 +131,10 @@ public class ValueCodec implements Codec<Value>
         return Value.class;
     }
 
-    private String normalize(String key, boolean isTopLevelNode)
+    private String normalize(String key)
     {
-        // 'id' is special alias key name of MongoDB ObjectId
-        // http://docs.mongodb.org/manual/reference/object-id/
-        if (key.equals("id") && isTopLevelNode) {
-            return "_id";
+        if (key.equals("_id")) {
+            return task.getIdFieldName();
         }
         return key;
     }

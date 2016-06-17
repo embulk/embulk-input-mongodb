@@ -34,11 +34,13 @@ import org.junit.rules.ExpectedException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
@@ -190,17 +192,27 @@ public class TestMongodbInputPlugin
     @Test
     public void testNormalize() throws Exception
     {
-        ValueCodec codec = new ValueCodec(true);
+        PluginTask task = config.loadConfig(PluginTask.class);
+        ValueCodec codec = new ValueCodec(true, task);
 
-        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class, boolean.class);
+        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class);
         normalize.setAccessible(true);
-        assertEquals("_id", normalize.invoke(codec, "id", true).toString());
-        assertEquals("_id", normalize.invoke(codec, "_id", true).toString());
-        assertEquals("f1", normalize.invoke(codec, "f1", true).toString());
+        assertEquals("_id", normalize.invoke(codec, "_id").toString());
+        assertEquals("f1", normalize.invoke(codec, "f1").toString());
+    }
 
-        assertEquals("id", normalize.invoke(codec, "id", false).toString());
-        assertEquals("_id", normalize.invoke(codec, "_id", false).toString());
-        assertEquals("f1", normalize.invoke(codec, "f1", false).toString());
+    @Test
+    public void testNormlizeWithIdFieldName() throws Exception
+    {
+        ConfigSource config = config().set("id_field_name", "object_id");
+
+        PluginTask task = config.loadConfig(PluginTask.class);
+        ValueCodec codec = new ValueCodec(true, task);
+
+        Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class);
+        normalize.setAccessible(true);
+        assertEquals("object_id", normalize.invoke(codec, "_id").toString());
+        assertEquals("f1", normalize.invoke(codec, "f1").toString());
     }
 
     @Test
@@ -244,13 +256,12 @@ public class TestMongodbInputPlugin
     {
         return Exec.newConfigSource()
                 .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
-                .set("last_path", "");
+                .set("collection", MONGO_COLLECTION);
     }
 
     private List<Document> createValidDocuments() throws Exception
     {
-        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH);
+        DateFormat format = getUTCDateFormat();
 
         List<Document> documents = new ArrayList<>();
         documents.add(
@@ -259,7 +270,7 @@ public class TestMongodbInputPlugin
                     .append("array_field", Arrays.asList(1, 2, 3))
                     .append("binary_field", new BsonBinary(("test").getBytes("UTF-8")))
                     .append("boolean_field", true)
-                    .append("datetime_field", format.parse("2015-01-27T19:23:49Z"))
+                    .append("datetime_field", format.parse("2015-01-27T10:23:49.000Z"))
                     .append("null_field", null)
                     .append("regex_field", new BsonRegularExpression(".+?"))
                     .append("javascript_field", new BsonJavaScript("var s = \"javascript\";"))
@@ -278,7 +289,7 @@ public class TestMongodbInputPlugin
 
         documents.add(new Document("document_field", new Document("k", "v")));
 
-        documents.add(new Document("document_field", new Document("k", format.parse("2015-02-03T08:13:45Z"))));
+        documents.add(new Document("document_field", new Document("k", format.parse("2015-02-02T23:13:45.000Z"))));
 
         return documents;
     }
@@ -296,6 +307,7 @@ public class TestMongodbInputPlugin
         assertEquals(5, records.size());
 
         ObjectMapper mapper = new ObjectMapper();
+        mapper.setDateFormat(getUTCDateFormat());
 
         {
             JsonNode node = mapper.readTree(records.get(0)[0].toString());
@@ -360,5 +372,11 @@ public class TestMongodbInputPlugin
         MongoDatabase db = (MongoDatabase) method.invoke(plugin, task);
         MongoCollection collection = db.getCollection(task.getCollection());
         collection.insertMany(documents);
+    }
+
+    private DateFormat getUTCDateFormat() {
+      DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.ENGLISH);
+      dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+      return dateFormat;
     }
 }

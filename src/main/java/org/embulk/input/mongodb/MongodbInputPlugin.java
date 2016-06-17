@@ -68,6 +68,10 @@ public class MongodbInputPlugin
         @ConfigDefault("\"{}\"")
         String getSort();
 
+        @Config("id_field_name")
+        @ConfigDefault("\"_id\"")
+        String getIdFieldName();
+
         @Config("batch_size")
         @ConfigDefault("10000")
         @Min(1)
@@ -144,7 +148,7 @@ public class MongodbInputPlugin
 
             CodecRegistry registry = CodecRegistries.fromRegistries(
                     MongoClient.getDefaultCodecRegistry(),
-                    CodecRegistries.fromCodecs(new ValueCodec(task.getStopOnInvalidRecord()))
+                    CodecRegistries.fromCodecs(new ValueCodec(task.getStopOnInvalidRecord(), task))
             );
             collection = db.getCollection(task.getCollection(), Value.class)
                     .withCodecRegistry(registry);
