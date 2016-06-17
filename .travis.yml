@@ -44,9 +44,9 @@ before_script:
   - echo "Wait mongodb wakeup"
   - sleep 10
   - mkdir -p ./tmp
+  - date
 
 script:
-  - mongoimport --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
   - ./gradlew check
   - ./gradlew package
   - mongoimport --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
