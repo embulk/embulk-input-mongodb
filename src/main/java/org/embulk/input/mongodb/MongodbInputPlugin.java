@@ -1,5 +1,6 @@
 package org.embulk.input.mongodb;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.mongodb.MongoClient;
@@ -19,6 +20,9 @@ import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
+import org.embulk.config.DataSource;
+import org.embulk.config.DataSourceImpl;
+import org.embulk.config.ModelManager;
 import org.embulk.config.Task;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
@@ -36,8 +40,12 @@ import org.slf4j.Logger;
 
 import javax.validation.constraints.Min;
 
+import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MongodbInputPlugin
         implements InputPlugin
@@ -63,10 +71,12 @@ public class MongodbInputPlugin
         @Config("query")
         @ConfigDefault("\"{}\"")
         String getQuery();
+        void setQuery(String query);
 
         @Config("sort")
         @ConfigDefault("\"{}\"")
         String getSort();
+        void setSort(String sort);
 
         @Config("id_field_name")
         @ConfigDefault("\"_id\"")
@@ -85,6 +95,14 @@ public class MongodbInputPlugin
         @ConfigDefault("\"record\"")
         String getJsonColumnName();
 
+        @Config("incremental_field")
+        @ConfigDefault("null")
+        Optional<List<String>> getIncrementalField();
+
+        @Config("last_record")
+        @ConfigDefault("null")
+        Optional<Map<String, Object>> getLastRecord();
+
         @ConfigInject
         BufferAllocator getBufferAllocator();
     }
@@ -99,6 +117,13 @@ public class MongodbInputPlugin
         if (task.getFields().isPresent()) {
             throw new ConfigException("field option was deprecated so setting will be ignored");
         }
+        if (task.getIncrementalField().isPresent() && !task.getSort().equals("{}")) {
+            throw new ConfigException("both of sort and incremental_load can't be used together");
+        }
+
+        Map<String, String> newCondition = buildIncrementalCondition(task);
+        task.setQuery(newCondition.get("query"));
+        task.setSort(newCondition.get("sort"));
 
         validateJsonField("projection", task.getProjection());
         validateJsonField("query", task.getQuery());
@@ -120,8 +145,14 @@ public class MongodbInputPlugin
             Schema schema, int taskCount,
             InputPlugin.Control control)
     {
-        control.run(taskSource, schema, taskCount);
-        return Exec.newConfigDiff();
+        List<TaskReport> report = control.run(taskSource, schema, taskCount);
+
+        ConfigDiff configDiff = Exec.newConfigDiff();
+        if (report.size() > 0 && report.get(0).has("last_record")) {
+            configDiff.set("last_record", report.get(0).get(Map.class, "last_record"));
+        }
+
+        return configDiff;
     }
 
     @Override
@@ -142,13 +173,14 @@ public class MongodbInputPlugin
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
         final Column column = pageBuilder.getSchema().getColumns().get(0);
 
+        ValueCodec valueCodec = new ValueCodec(task.getStopOnInvalidRecord(), task);
         MongoCollection<Value> collection;
         try {
             MongoDatabase db = connect(task);
 
             CodecRegistry registry = CodecRegistries.fromRegistries(
                     MongoClient.getDefaultCodecRegistry(),
-                    CodecRegistries.fromCodecs(new ValueCodec(task.getStopOnInvalidRecord(), task))
+                    CodecRegistries.fromCodecs(valueCodec)
             );
             collection = db.getCollection(task.getCollection(), Value.class)
                     .withCodecRegistry(registry);
@@ -181,7 +213,44 @@ public class MongodbInputPlugin
 
         pageBuilder.finish();
 
-        return Exec.newTaskReport();
+        TaskReport report = Exec.newTaskReport();
+
+        if (valueCodec.getLastRecord() != null) {
+            DataSource lastRecord = new DataSourceImpl(Exec.getInjector().getInstance(ModelManager.class));
+            for (String k : valueCodec.getLastRecord().keySet()) {
+                String value = valueCodec.getLastRecord().get(k).toString();
+                Map<String, String> types = valueCodec.getLastRecordType();
+                HashMap<String, String> innerValue = new HashMap<>();
+                switch(types.get(k)) {
+                    case "OBJECT_ID":
+                        innerValue.put("$oid", value);
+                        lastRecord.set(k, innerValue);
+                        break;
+                    case "DATE_TIME":
+                        innerValue.put("$date", value);
+                        lastRecord.set(k, innerValue);
+                        break;
+                    case "INT32":
+                    case "INT64":
+                    case "TIMESTAMP":
+                        lastRecord.set(k, Integer.valueOf(value));
+                        break;
+                    case "BOOLEAN":
+                        lastRecord.set(k, Boolean.valueOf(value));
+                        break;
+                    case "DOUBLE":
+                        lastRecord.set(k, Double.valueOf(value));
+                        break;
+                    case "DOCUMENT":
+                    case "ARRAY":
+                        throw new ConfigException(String.format("Unsupported type '%s' was given for 'last_record' [%s]", types.get(k), value));
+                    default:
+                        lastRecord.set(k, value);
+                }
+            }
+            report.setNested("last_record", lastRecord);
+        }
+        return report;
     }
 
     @Override
@@ -199,6 +268,63 @@ public class MongodbInputPlugin
         // Get collection count for throw Exception
         db.getCollection(task.getCollection()).count();
         return db;
+    }
+
+    private Map<String, String> buildIncrementalCondition(PluginTask task)
+    {
+        Map<String, String> result = new HashMap<>();
+        String query = task.getQuery();
+        String sort = task.getSort();
+        result.put("query", query);
+        result.put("sort", sort);
+
+        Optional<List<String>> incrementalField = task.getIncrementalField();
+        Optional<Map<String, Object>> lastRecord = task.getLastRecord();
+        if (!incrementalField.isPresent()) {
+            return result;
+        }
+
+        Map<String, Object> newQuery = new LinkedHashMap<>();
+        Map<String, Integer> newSort = new LinkedHashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> queryJson = mapper.readValue(query, Map.class);
+            for (String k : queryJson.keySet()) {
+                newQuery.put(k, queryJson.get(k));
+            }
+
+            if (lastRecord.isPresent()) {
+                for (String k : lastRecord.get().keySet()) {
+                    Map<String, Object> v = new HashMap<>();
+                    Object record = lastRecord.get().get(k);
+
+                    if (newQuery.containsKey(k)) {
+                        throw new ConfigException("Field declaration was duplicated between 'incremental_field' and 'query' options");
+                    }
+
+                    v.put("$gt", record);
+                    newQuery.put(k, v);
+                }
+                String newQueryString = mapper.writeValueAsString(newQuery);
+                log.info(String.format("New query value was generated for incremental load: '%s'", newQueryString));
+                result.put("query", newQueryString);
+            }
+
+            for (String k : incrementalField.get()) {
+                newSort.put(k, 1);
+            }
+
+            String newSortString = mapper.writeValueAsString(newSort);
+            log.info(String.format("New sort value was generated for incremental load: '%s'", newSortString));
+            result.put("sort", newSortString);
+
+            return result;
+        }
+        catch (JSONParseException | IOException ex) {
+            throw new ConfigException("Could not generate new query for incremental load.");
+        }
     }
 
     private void validateJsonField(String name, String jsonString)
