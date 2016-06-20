@@ -63,17 +63,17 @@ public class ValueCodec implements Codec<Value>
 
         reader.readStartDocument();
         while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
-            String fieldName = reader.readName();
+            String originalFieldName = reader.readName();
             BsonType type = reader.getCurrentBsonType();
-            fieldName = normalize(fieldName);
+            String fieldName = normalize(originalFieldName);
 
             Value value;
             try {
                 value = readValue(reader, decoderContext);
                 kvs.put(newString(fieldName), value);
-                if (incrementalField.isPresent() && incrementalField.get().contains(fieldName)) {
-                    this.lastRecord.put(fieldName, value);
-                    this.lastRecordType.put(fieldName, type.toString());
+                if (incrementalField.isPresent() && incrementalField.get().contains(originalFieldName)) {
+                    this.lastRecord.put(originalFieldName, value);
+                    this.lastRecordType.put(originalFieldName, type.toString());
                 }
             }
             catch (UnknownTypeFoundException ex) {
