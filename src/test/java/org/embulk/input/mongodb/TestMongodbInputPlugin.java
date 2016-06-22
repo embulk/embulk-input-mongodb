@@ -11,6 +11,7 @@ import org.bson.BsonInt64;
 import org.bson.BsonJavaScript;
 import org.bson.BsonMaxKey;
 import org.bson.BsonRegularExpression;
+import org.bson.BsonSymbol;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.embulk.EmbulkTestRuntime;
@@ -278,6 +279,7 @@ public class TestMongodbInputPlugin
                     .append("timestamp_field", new BsonTimestamp(1463991177, 4))
                     .append("int64_field", new BsonInt64(314159265))
                     .append("document_field", new Document("k", true))
+                    .append("symbol_field", new BsonSymbol(":sym"))
         );
 
         documents.add(
@@ -324,6 +326,7 @@ public class TestMongodbInputPlugin
             assertEquals("1463991177", node.get("timestamp_field").asText());
             assertEquals(314159265L, node.get("int64_field").asLong());
             assertEquals("{\"k\":true}", node.get("document_field").toString());
+            assertEquals(":sym", node.get("symbol_field").asText());
         }
 
         {
