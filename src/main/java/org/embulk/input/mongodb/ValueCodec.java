@@ -119,7 +119,9 @@ public class ValueCodec implements Codec<Value>
                 return newInteger(reader.readInt64());
             case DOCUMENT:
                 return decode(reader, decoderContext);
-            default: // e.g. MIN_KEY, MAX_KEY, SYMBOL, DB_POINTER, UNDEFINED
+            case SYMBOL:
+                return newString(reader.readSymbol());
+            default: // e.g. MIN_KEY, MAX_KEY, DB_POINTER, UNDEFINED
                 throw new UnknownTypeFoundException(String.format("Unsupported type %s of '%s' field. Please exclude the field from 'projection:' option",
                         reader.getCurrentBsonType(), reader.getCurrentName()));
         }
