@@ -13,6 +13,7 @@ import org.bson.BsonMaxKey;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.types.Symbol;
 import org.embulk.EmbulkTestRuntime;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
@@ -39,7 +40,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.TimeZone;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -278,6 +278,7 @@ public class TestMongodbInputPlugin
                     .append("timestamp_field", new BsonTimestamp(1463991177, 4))
                     .append("int64_field", new BsonInt64(314159265))
                     .append("document_field", new Document("k", true))
+                    .append("symbol_field", new Symbol("symbol"))
         );
 
         documents.add(
@@ -324,6 +325,7 @@ public class TestMongodbInputPlugin
             assertEquals("1463991177", node.get("timestamp_field").asText());
             assertEquals(314159265L, node.get("int64_field").asLong());
             assertEquals("{\"k\":true}", node.get("document_field").toString());
+            assertEquals("symbol", node.get("symbol_field").asText());
         }
 
         {
