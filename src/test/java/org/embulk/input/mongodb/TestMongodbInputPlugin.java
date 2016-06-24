@@ -2,6 +2,7 @@ package org.embulk.input.mongodb;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.mongodb.client.MongoCollection;
@@ -15,6 +16,7 @@ import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.Symbol;
 import org.embulk.EmbulkTestRuntime;
+import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskReport;
@@ -39,7 +41,9 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -93,6 +97,8 @@ public class TestMongodbInputPlugin
         assertEquals("{}", task.getSort());
         assertEquals((long) 10000, (long) task.getBatchSize());
         assertEquals("record", task.getJsonColumnName());
+        assertEquals(Optional.absent(), task.getIncrementalField());
+        assertEquals(Optional.absent(), task.getLastRecord());
     }
 
     @Test(expected = ConfigException.class)
@@ -121,6 +127,31 @@ public class TestMongodbInputPlugin
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", null);
+
+        plugin.transaction(config, new Control());
+    }
+
+    @Test(expected = ConfigException.class)
+    public void checkInvalidOptionCombination()
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("sort", "{ \"field1\": 1 }")
+                .set("incremental_field", Optional.of(Arrays.asList("account")));
+
+        plugin.transaction(config, new Control());
+    }
+
+    @Test(expected = ConfigException.class)
+    public void checkInvalidQueryOption()
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("query", "{\"key\":invalid_value}")
+                .set("last_record", 0)
+                .set("incremental_field", Optional.of(Arrays.asList("account")));
 
         plugin.transaction(config, new Control());
     }
@@ -165,6 +196,44 @@ public class TestMongodbInputPlugin
 
         plugin.transaction(config, new Control());
         assertValidRecords(getFieldSchema(), output);
+    }
+
+    @Test
+    public void testRunWithIncrementalLoad() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("incremental_field", Optional.of(Arrays.asList("int32_field", "double_field", "datetime_field", "boolean_field")));
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        ConfigDiff diff = plugin.transaction(config, new Control());
+        ConfigDiff lastRecord = diff.getNested("last_record");
+
+        assertEquals("32864", lastRecord.get(String.class, "int32_field"));
+        assertEquals("1.23", lastRecord.get(String.class, "double_field"));
+        assertEquals("{$date=2015-01-27T10:23:49.000Z}", lastRecord.get(Map.class, "datetime_field").toString());
+        assertEquals("true", lastRecord.get(String.class, "boolean_field"));
+    }
+
+    @Test(expected = ConfigException.class)
+    public void testRunWithIncrementalLoadUnsupportedType() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("incremental_field", Optional.of(Arrays.asList("document_field")));
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
     }
 
     @Test(expected = ValueCodec.UnknownTypeFoundException.class)
@@ -225,6 +294,102 @@ public class TestMongodbInputPlugin
             validate.invoke(plugin, "name", invalidJsonString);
         }
         catch (InvocationTargetException ex) {
+            assertEquals(ConfigException.class, ex.getCause().getClass());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testBuildIncrementalCondition() throws Exception
+    {
+        PluginTask task = config().loadConfig(PluginTask.class);
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        Method method = MongodbInputPlugin.class.getDeclaredMethod("buildIncrementalCondition", PluginTask.class);
+        method.setAccessible(true);
+
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("incremental_field", Optional.of(Arrays.asList("account")));
+        task = config.loadConfig(PluginTask.class);
+        Map<String, String> actual = (Map<String, String>) method.invoke(plugin, task);
+        Map<String, String> expected = new HashMap<>();
+        expected.put("query", "{}");
+        expected.put("sort", "{\"account\":1}");
+        assertEquals(expected, actual);
+
+        Map<String, Object> lastRecord = new HashMap<>();
+        Map<String, String> innerRecord = new HashMap<>();
+        innerRecord.put("$oid", "abc");
+        lastRecord.put("_id", innerRecord);
+        lastRecord.put("int32_field", 15000);
+        innerRecord = new HashMap<>();
+        innerRecord.put("$date", "2015-01-27T19:23:49Z");
+        lastRecord.put("datetime_field", innerRecord);
+        config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
+                .set("incremental_field", Optional.of(Arrays.asList("_id", "int32_field", "datetime_field")))
+                .set("last_record", Optional.of(lastRecord));
+        task = config.loadConfig(PluginTask.class);
+        actual = (Map<String, String>) method.invoke(plugin, task);
+        expected.put("query", "{\"double_field\":{\"$gte\":1.23},\"int32_field\":{\"$gt\":15000},\"_id\":{\"$gt\":{\"$oid\":\"abc\"}},\"datetime_field\":{\"$gt\":{\"$date\":\"2015-01-27T19:23:49Z\"}}}");
+        expected.put("sort", "{\"_id\":1,\"int32_field\":1,\"datetime_field\":1}");
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void testBuildIncrementalConditionFieldDuplicated() throws Exception
+    {
+        Map<String, Object> lastRecord = new HashMap<>();
+        lastRecord.put("double_field", "0");
+
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
+                .set("incremental_field", Optional.of(Arrays.asList("double_field")))
+                .set("last_record", Optional.of(lastRecord));
+        PluginTask task = config.loadConfig(PluginTask.class);
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        Method method = MongodbInputPlugin.class.getDeclaredMethod("buildIncrementalCondition", PluginTask.class);
+        method.setAccessible(true);
+        try {
+            method.invoke(plugin, task); // field declaration was duplicated between query and incremental_field
+        }
+        catch (Exception ex) {
+            assertEquals(ConfigException.class, ex.getCause().getClass());
+        }
+    }
+
+    @Test
+    public void testBuildIncrementalConditionFieldRequired() throws Exception
+    {
+        Map<String, Object> lastRecord = new HashMap<>();
+        lastRecord.put("double_field", "0");
+
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("incremental_field", Optional.of(Arrays.asList("invalid_field")))
+                .set("last_record", Optional.of(lastRecord));
+        PluginTask task = config.loadConfig(PluginTask.class);
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+
+        Method method = MongodbInputPlugin.class.getDeclaredMethod("buildIncrementalCondition", PluginTask.class);
+        method.setAccessible(true);
+        try {
+            method.invoke(plugin, task); // field declaration was not set at incremental_field
+        }
+        catch (Exception ex) {
             assertEquals(ConfigException.class, ex.getCause().getClass());
         }
     }
@@ -376,7 +541,8 @@ public class TestMongodbInputPlugin
         collection.insertMany(documents);
     }
 
-    private DateFormat getUTCDateFormat() {
+    private DateFormat getUTCDateFormat()
+    {
       DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.ENGLISH);
       dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
       return dateFormat;

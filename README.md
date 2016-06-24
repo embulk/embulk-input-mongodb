@@ -28,6 +28,8 @@ This plugin only works with embulk >= 0.8.8.
 - **query**: a JSON document used for [querying](https://docs.mongodb.com/manual/tutorial/query-documents/) on the source collection. Documents are loaded from the colleciton if they match with this condition. (string, optional)
 - **projection**: A JSON document used for [projection](https://docs.mongodb.com/manual/reference/operator/projection/positional/) on query results. Fields in a document are used only if they match with this condition. (string, optional)
 - **sort**: ordering of results (string, optional)
+- **incremental_field** list of field name (list, optional, can't use with sort option)
+- **last_record** (hash, optional) last loaded record for incremental load
 - **stop_on_invalid_record** Stop bulk load transaction if a document includes invalid record (such as unsupported object type) (boolean, optional, default: false)
 - **json_column_name**: column name used in outputs (string, optional, default: "json")
 
@@ -52,6 +54,52 @@ in:
   query: '{ field1: { $gte: 3 } }'
   projection: '{ "_id": 1, "field1": 1, "field2": 0 }'
   sort: '{ "field1": 1 }'
+```
+
+### Incremental loading
+
+```yaml
+in:
+  type: mongodb
+  uri: mongodb://myuser:mypassword@localhost:27017/my_database
+  collection: "my_collection"
+  query: '{ field1: { $gt: 3 } }'
+  projection: '{ "_id": 1, "field1": 1, "field2": 1 }'
+  incremental_field:
+    - "field2"
+  last_record: {"field2": 13215}
+```
+
+Plugin will create new query and sort value.
+You can't use `incremental_field` option with `sort` option at the same time.
+
+```
+query { field1: { $gt: 3 }, field2: { $gt: 13215}}
+sort {"field2", 1} # field2 ascending
+```
+
+You have to specify last_record with special characters when field type is `ObjectId` or `DateTime`.
+
+```yaml
+# ObjectId field
+in:
+  type: mongodb
+  incremental_field:
+    - "_id"
+  last_record: {"_id": {"$oid": "5739b2261c21e58edfe39716"}}
+
+# DateTime field
+in:
+  type: mongodb
+  incremental_field:
+    - "time_field"
+  last_record: {"time_field": {"$date": "2015-01-25T13:23:15.000Z"}}
+```
+
+#### Run Incremental load
+
+```
+$ embulk run /path/to/config.yml -c config-diff.yml
 ```
 
 ### Advanced usage with filter plugins

@@ -1,5 +1,6 @@
 package org.embulk.input.mongodb;
 
+import com.google.common.base.Optional;
 import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.BsonWriter;
@@ -14,12 +15,19 @@ import org.slf4j.Logger;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
-
-import static org.msgpack.value.ValueFactory.*;
+import static org.msgpack.value.ValueFactory.newArray;
+import static org.msgpack.value.ValueFactory.newBinary;
+import static org.msgpack.value.ValueFactory.newBoolean;
+import static org.msgpack.value.ValueFactory.newFloat;
+import static org.msgpack.value.ValueFactory.newInteger;
+import static org.msgpack.value.ValueFactory.newMap;
+import static org.msgpack.value.ValueFactory.newNil;
+import static org.msgpack.value.ValueFactory.newString;
 
 public class ValueCodec implements Codec<Value>
 {
@@ -27,6 +35,9 @@ public class ValueCodec implements Codec<Value>
     private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
     private final boolean stopOnInvalidRecord;
     private final MongodbInputPlugin.PluginTask task;
+    private final Optional<List<String>> incrementalField;
+    private Map<String, Object> lastRecord;
+    private Map<String, String> lastRecordType;
 
     public ValueCodec(boolean stopOnInvalidRecord, MongodbInputPlugin.PluginTask task)
     {
@@ -34,6 +45,9 @@ public class ValueCodec implements Codec<Value>
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         this.stopOnInvalidRecord = stopOnInvalidRecord;
         this.task = task;
+        this.incrementalField = task.getIncrementalField();
+        this.lastRecord = new HashMap<>();
+        this.lastRecordType = new HashMap<>();
     }
 
     @Override
@@ -49,12 +63,18 @@ public class ValueCodec implements Codec<Value>
 
         reader.readStartDocument();
         while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
-            String fieldName = reader.readName();
+            String originalFieldName = reader.readName();
             BsonType type = reader.getCurrentBsonType();
-            fieldName = normalize(fieldName);
+            String fieldName = normalize(originalFieldName);
 
+            Value value;
             try {
-                kvs.put(newString(fieldName), readValue(reader, decoderContext));
+                value = readValue(reader, decoderContext);
+                kvs.put(newString(fieldName), value);
+                if (incrementalField.isPresent() && incrementalField.get().contains(originalFieldName)) {
+                    this.lastRecord.put(originalFieldName, value);
+                    this.lastRecordType.put(originalFieldName, type.toString());
+                }
             }
             catch (UnknownTypeFoundException ex) {
                 reader.skipValue();
@@ -139,6 +159,16 @@ public class ValueCodec implements Codec<Value>
             return task.getIdFieldName();
         }
         return key;
+    }
+
+    public Map<String, Object> getLastRecord()
+    {
+        return this.lastRecord;
+    }
+
+    public Map<String, String> getLastRecordType()
+    {
+        return this.lastRecordType;
     }
 
     public static class UnknownTypeFoundException extends DataException
