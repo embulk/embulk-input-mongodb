@@ -24,12 +24,13 @@ This plugin only works with embulk >= 0.8.8.
     ~~- double~~
     ~~- string~~
     ~~- timestamp~~
-- **id_field_name** (string, optional, default: "_id") Name of Object ID field name. Set if you want to change the default name `_id` 
-- **query**: a JSON document used for [querying](https://docs.mongodb.com/manual/tutorial/query-documents/) on the source collection. Documents are loaded from the colleciton if they match with this condition. (string, optional)
+- **id_field_name** Name of Object ID field name. Set if you want to change the default name `_id` (string, optional, default: "_id")
+- **query**: A JSON document used for [querying](https://docs.mongodb.com/manual/tutorial/query-documents/) on the source collection. Documents are loaded from the colleciton if they match with this condition. (string, optional)
 - **projection**: A JSON document used for [projection](https://docs.mongodb.com/manual/reference/operator/projection/positional/) on query results. Fields in a document are used only if they match with this condition. (string, optional)
-- **sort**: ordering of results (string, optional)
-- **incremental_field** list of field name (list, optional, can't use with sort option)
-- **last_record** (hash, optional) last loaded record for incremental load
+- **sort**: Ordering of results (string, optional)
+- **batch_size**: Limits the number of objects returned in one [batch](http://api.mongodb.com/java/current/com/mongodb/DBCursor.html#batchSize-int-) (integer, optional, default: 10000)
+- **incremental_field** List of field name (list, optional, can't use with sort option)
+- **last_record** Last loaded record for incremental load (hash, optional)
 - **stop_on_invalid_record** Stop bulk load transaction if a document includes invalid record (such as unsupported object type) (boolean, optional, default: false)
 - **json_column_name**: column name used in outputs (string, optional, default: "json")
 
