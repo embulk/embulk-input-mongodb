@@ -5,7 +5,9 @@ import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
+import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -42,6 +44,8 @@ import javax.validation.constraints.Min;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,12 +54,40 @@ import java.util.Map;
 public class MongodbInputPlugin
         implements InputPlugin
 {
+    public interface SeedAddressTask
+            extends Task
+    {
+        @Config("host")
+        String getHost();
+
+        @Config("port")
+        @ConfigDefault("27017")
+        int getPort();
+    }
+
     public interface PluginTask
             extends Task
     {
         // MongoDB connection string URI
         @Config("uri")
-        String getUri();
+        @ConfigDefault("null")
+        Optional<String> getUri();
+
+        @Config("seeds")
+        @ConfigDefault("null")
+        Optional<List<SeedAddressTask>> getSeeds();
+
+        @Config("username")
+        @ConfigDefault("null")
+        Optional<String> getUsername();
+
+        @Config("password")
+        @ConfigDefault("null")
+        Optional<String> getPassword();
+
+        @Config("database")
+        @ConfigDefault("null")
+        Optional<String> getDatabase();
 
         @Config("collection")
         String getCollection();
@@ -261,13 +293,54 @@ public class MongodbInputPlugin
 
     private MongoDatabase connect(final PluginTask task) throws UnknownHostException, MongoException
     {
-        MongoClientURI uri = new MongoClientURI(task.getUri());
-        MongoClient mongoClient = new MongoClient(uri);
+        MongoClient mongoClient;
+        String database;
 
-        MongoDatabase db = mongoClient.getDatabase(uri.getDatabase());
+        if (!task.getUri().isPresent() && !task.getSeeds().isPresent()) {
+            throw new ConfigException("'uri' or 'seeds' is required");
+        }
+
+        if (task.getUri().isPresent()) {
+            MongoClientURI uri = new MongoClientURI(task.getUri().get());
+            database = uri.getDatabase();
+            mongoClient = new MongoClient(uri);
+        }
+        else {
+            mongoClient = createClientFromParams(task);
+            database = task.getDatabase().get();
+        }
+
+        MongoDatabase db = mongoClient.getDatabase(database);
         // Get collection count for throw Exception
         db.getCollection(task.getCollection()).count();
         return db;
+    }
+
+    private MongoClient createClientFromParams(PluginTask task)
+    {
+        if (!task.getSeeds().isPresent()) {
+            throw new ConfigException("'seeds' option's value is required but empty");
+        }
+        if (!task.getDatabase().isPresent()) {
+            throw new ConfigException("'database' option's value is required but empty");
+        }
+
+        List<ServerAddress> addresses = new ArrayList<>();
+        for (SeedAddressTask host : task.getSeeds().get()) {
+            addresses.add(new ServerAddress(host.getHost(), host.getPort()));
+        }
+
+        if (task.getUsername().isPresent()) {
+            MongoCredential credential = MongoCredential.createCredential(
+                    task.getUsername().get(),
+                    task.getDatabase().get(),
+                    task.getPassword().get().toCharArray()
+            );
+            return new MongoClient(addresses, Arrays.asList(credential));
+        }
+        else {
+            return new MongoClient(addresses);
+        }
     }
 
     private Map<String, String> buildIncrementalCondition(PluginTask task)

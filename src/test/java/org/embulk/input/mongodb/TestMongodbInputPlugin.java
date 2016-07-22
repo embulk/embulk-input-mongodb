@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.BsonBinary;
@@ -188,6 +190,28 @@ public class TestMongodbInputPlugin
     @Test
     public void testRun() throws Exception
     {
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
+        assertValidRecords(getFieldSchema(), output);
+    }
+
+    @Test
+    public void testRunWithConnectionParams() throws Exception
+    {
+        MongoClientURI uri = new MongoClientURI(MONGO_URI);
+        String host = uri.getHosts().get(0);
+        Integer port = (host.split(":")[1] != null) ? Integer.valueOf(host.split(":")[1]) : 27017;
+        ConfigSource config = Exec.newConfigSource()
+                .set("seeds", Arrays.asList(ImmutableMap.of("host", host.split(":")[0], "port", port)))
+                .set("username", uri.getUsername())
+                .set("password", uri.getPassword())
+                .set("database", uri.getDatabase())
+                .set("collection", MONGO_COLLECTION);
         PluginTask task = config.loadConfig(PluginTask.class);
 
         dropCollection(task, MONGO_COLLECTION);
