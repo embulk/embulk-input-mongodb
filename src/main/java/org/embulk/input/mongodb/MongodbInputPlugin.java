@@ -54,7 +54,7 @@ import java.util.Map;
 public class MongodbInputPlugin
         implements InputPlugin
 {
-    public interface SeedAddressTask
+    public interface HostTask
             extends Task
     {
         @Config("host")
@@ -73,9 +73,9 @@ public class MongodbInputPlugin
         @ConfigDefault("null")
         Optional<String> getUri();
 
-        @Config("seeds")
+        @Config("hosts")
         @ConfigDefault("null")
-        Optional<List<SeedAddressTask>> getSeeds();
+        Optional<List<HostTask>> getHosts();
 
         @Config("username")
         @ConfigDefault("null")
@@ -296,8 +296,8 @@ public class MongodbInputPlugin
         MongoClient mongoClient;
         String database;
 
-        if (!task.getUri().isPresent() && !task.getSeeds().isPresent()) {
-            throw new ConfigException("'uri' or 'seeds' is required");
+        if (!task.getUri().isPresent() && !task.getHosts().isPresent()) {
+            throw new ConfigException("'uri' or 'hosts' is required");
         }
 
         if (task.getUri().isPresent()) {
@@ -318,15 +318,15 @@ public class MongodbInputPlugin
 
     private MongoClient createClientFromParams(PluginTask task)
     {
-        if (!task.getSeeds().isPresent()) {
-            throw new ConfigException("'seeds' option's value is required but empty");
+        if (!task.getHosts().isPresent()) {
+            throw new ConfigException("'hosts' option's value is required but empty");
         }
         if (!task.getDatabase().isPresent()) {
             throw new ConfigException("'database' option's value is required but empty");
         }
 
         List<ServerAddress> addresses = new ArrayList<>();
-        for (SeedAddressTask host : task.getSeeds().get()) {
+        for (HostTask host : task.getHosts().get()) {
             addresses.add(new ServerAddress(host.getHost(), host.getPort()));
         }
 

@@ -207,7 +207,7 @@ public class TestMongodbInputPlugin
         String host = uri.getHosts().get(0);
         Integer port = (host.split(":")[1] != null) ? Integer.valueOf(host.split(":")[1]) : 27017;
         ConfigSource config = Exec.newConfigSource()
-                .set("seeds", Arrays.asList(ImmutableMap.of("host", host.split(":")[0], "port", port)))
+                .set("hosts", Arrays.asList(ImmutableMap.of("host", host.split(":")[0], "port", port)))
                 .set("username", uri.getUsername())
                 .set("password", uri.getPassword())
                 .set("database", uri.getDatabase())

@@ -20,7 +20,7 @@ This plugin only works with embulk >= 0.8.8.
   - use MongoDB connection string URI
     - **uri**: [MongoDB connection string URI](http://docs.mongodb.org/manual/reference/connection-string/) (e.g. 'mongodb://localhost:27017/mydb') (string, required)
   - use separated URI parameters
-    - **seeds**: list of hosts. seeds are pairs of host(string, required) and port(integer, optional, default: 27017)
+    - **hosts**: list of hosts. `hosts` are pairs of host(string, required) and port(integer, optional, default: 27017)
     - **username**: (string, optional)
     - **password**:  (string, optional)
     - **database**:  (string, required)
@@ -61,7 +61,7 @@ in:
 ```yaml
 in:
   type: mongodb
-  seeds:
+  hosts:
   - {host: localhost, port: 27017}
   - {host: example.com, port: 27017}
   username: myuser
