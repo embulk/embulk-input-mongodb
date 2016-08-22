@@ -42,14 +42,14 @@ install:
 
 before_script:
   - echo "Wait mongodb wakeup"
-  - sleep 10
+  - sleep 15
   - mkdir -p ./tmp
   - date
 
 script:
   - ./gradlew check
   - ./gradlew package
-  - mongoimport --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
+  - mongoimport --host 127.0.0.1 --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
   - |
     for target in basic full id_field_name
     do
