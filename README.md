@@ -14,7 +14,16 @@ This plugin only works with embulk >= 0.8.8.
 
 ## Configuration
 
-- **uri**: [MongoDB connection string URI](http://docs.mongodb.org/manual/reference/connection-string/) (e.g. 'mongodb://localhost:27017/mydb') (string, required)
+- Connection parameters
+  One of them is required.
+  
+  - use MongoDB connection string URI
+    - **uri**: [MongoDB connection string URI](http://docs.mongodb.org/manual/reference/connection-string/) (e.g. 'mongodb://localhost:27017/mydb') (string, required)
+  - use separated URI parameters
+    - **hosts**: list of hosts. `hosts` are pairs of host(string, required) and port(integer, optional, default: 27017)
+    - **user**: (string, optional)
+    - **password**:  (string, optional)
+    - **database**:  (string, required)
 - **collection**: source collection name (string, required)
 - **fields**: **(deprecated)** ~~hash records that has the following two fields (array, required)~~
   ~~- name: Name of the column~~
@@ -38,10 +47,26 @@ This plugin only works with embulk >= 0.8.8.
 
 ### Exporting all objects
 
+#### Specify with MongoDB connection string URI.
+
 ```yaml
 in:
   type: mongodb
   uri: mongodb://myuser:mypassword@localhost:27017/my_database
+  collection: "my_collection"
+```
+
+#### Specify with separated URI parameters.
+
+```yaml
+in:
+  type: mongodb
+  hosts:
+  - {host: localhost, port: 27017}
+  - {host: example.com, port: 27017}
+  user: myuser
+  password: mypassword
+  database: my_database
   collection: "my_collection"
 ```
 
