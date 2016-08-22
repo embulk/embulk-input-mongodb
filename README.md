@@ -21,7 +21,7 @@ This plugin only works with embulk >= 0.8.8.
     - **uri**: [MongoDB connection string URI](http://docs.mongodb.org/manual/reference/connection-string/) (e.g. 'mongodb://localhost:27017/mydb') (string, required)
   - use separated URI parameters
     - **hosts**: list of hosts. `hosts` are pairs of host(string, required) and port(integer, optional, default: 27017)
-    - **username**: (string, optional)
+    - **user**: (string, optional)
     - **password**:  (string, optional)
     - **database**:  (string, required)
 - **collection**: source collection name (string, required)
@@ -64,7 +64,7 @@ in:
   hosts:
   - {host: localhost, port: 27017}
   - {host: example.com, port: 27017}
-  username: myuser
+  user: myuser
   password: mypassword
   database: my_database
   collection: "my_collection"

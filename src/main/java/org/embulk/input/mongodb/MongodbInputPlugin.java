@@ -77,9 +77,9 @@ public class MongodbInputPlugin
         @ConfigDefault("null")
         Optional<List<HostTask>> getHosts();
 
-        @Config("username")
+        @Config("user")
         @ConfigDefault("null")
-        Optional<String> getUsername();
+        Optional<String> getUser();
 
         @Config("password")
         @ConfigDefault("null")
@@ -330,9 +330,9 @@ public class MongodbInputPlugin
             addresses.add(new ServerAddress(host.getHost(), host.getPort()));
         }
 
-        if (task.getUsername().isPresent()) {
+        if (task.getUser().isPresent()) {
             MongoCredential credential = MongoCredential.createCredential(
-                    task.getUsername().get(),
+                    task.getUser().get(),
                     task.getDatabase().get(),
                     task.getPassword().get().toCharArray()
             );
