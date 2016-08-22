@@ -26,7 +26,8 @@ cache:
 before_install:
   - cat /etc/hosts # optionally check the content *before*
   - sudo hostname "$(hostname | cut -c1-63)"
-  - sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts | sudo tee /etc/hosts
+  - sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts > /tmp/hosts
+  - sudo mv /tmp/hosts /etc/hosts
   - cat /etc/hosts # optionally check the content *after*
 
 install:
@@ -42,14 +43,14 @@ install:
 
 before_script:
   - echo "Wait mongodb wakeup"
-  - sleep 10
+  - sleep 15
   - mkdir -p ./tmp
   - date
 
 script:
   - ./gradlew check
   - ./gradlew package
-  - mongoimport --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
+  - mongoimport --host 127.0.0.1 --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
   - |
     for target in basic full id_field_name
     do
