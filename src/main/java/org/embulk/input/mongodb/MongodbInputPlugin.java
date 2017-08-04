@@ -110,6 +110,14 @@ public class MongodbInputPlugin
         String getSort();
         void setSort(String sort);
 
+        @Config("limit")
+        @ConfigDefault("null")
+        Optional<Integer> getLimit();
+
+        @Config("skip")
+        @ConfigDefault("null")
+        Optional<Integer> getSkip();
+
         @Config("id_field_name")
         @ConfigDefault("\"_id\"")
         String getIdFieldName();
@@ -151,6 +159,9 @@ public class MongodbInputPlugin
         }
         if (task.getIncrementalField().isPresent() && !task.getSort().equals("{}")) {
             throw new ConfigException("both of sort and incremental_load can't be used together");
+        }
+        if (task.getIncrementalField().isPresent() && task.getSkip().isPresent()) {
+            throw new ConfigException("both of skip and incremental_load can't be used together");
         }
 
         Map<String, String> newCondition = buildIncrementalCondition(task);
@@ -228,12 +239,20 @@ public class MongodbInputPlugin
         log.trace("query: {}", query);
         log.trace("projection: {}", projection);
         log.trace("sort: {}", sort);
+        if (task.getLimit().isPresent()) {
+            log.trace("limit: {}", task.getLimit());
+        }
+        if (task.getSkip().isPresent()) {
+            log.trace("skip: {}", task.getSkip());
+        }
 
         try (MongoCursor<Value> cursor = collection
                 .find(query)
                 .projection(projection)
                 .sort(sort)
                 .batchSize(task.getBatchSize())
+                .limit(task.getLimit().or(0))
+                .skip(task.getSkip().or(0))
                 .iterator()) {
             while (cursor.hasNext()) {
                 pageBuilder.setJson(column, cursor.next());
