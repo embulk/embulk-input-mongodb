@@ -97,6 +97,8 @@ public class TestMongodbInputPlugin
         PluginTask task = config.loadConfig(PluginTask.class);
         assertEquals("{}", task.getQuery());
         assertEquals("{}", task.getSort());
+        assertEquals(Optional.<Integer>absent(), task.getLimit());
+        assertEquals(Optional.<Integer>absent(), task.getSkip());
         assertEquals((long) 10000, (long) task.getBatchSize());
         assertEquals("record", task.getJsonColumnName());
         assertEquals(Optional.absent(), task.getIncrementalField());
@@ -134,12 +136,24 @@ public class TestMongodbInputPlugin
     }
 
     @Test(expected = ConfigException.class)
-    public void checkInvalidOptionCombination()
+    public void checkSortCannotUseWithIncremental()
     {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", MONGO_COLLECTION)
                 .set("sort", "{ \"field1\": 1 }")
+                .set("incremental_field", Optional.of(Arrays.asList("account")));
+
+        plugin.transaction(config, new Control());
+    }
+
+    @Test(expected = ConfigException.class)
+    public void checkSkipCannotUseWithIncremental()
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("skip", 10)
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
 
         plugin.transaction(config, new Control());
