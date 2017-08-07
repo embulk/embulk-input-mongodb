@@ -215,6 +215,41 @@ public class TestMongodbInputPlugin
     }
 
     @Test
+    public void testRunWithLimit() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("limit", 1);
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
+        assertValidRecords(getFieldSchema(), output, 1, 0);
+    }
+
+    @Test
+    public void testRunWithLimitSkip() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("limit", 3)
+                .set("skip", 1);
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
+        assertValidRecords(getFieldSchema(), output, 3, 1);
+    }
+
+    @Test
     public void testRunWithConnectionParams() throws Exception
     {
         MongoClientURI uri = new MongoClientURI(MONGO_URI);
@@ -242,7 +277,7 @@ public class TestMongodbInputPlugin
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", MONGO_COLLECTION)
-                .set("incremental_field", Optional.of(Arrays.asList("int32_field", "double_field", "datetime_field", "boolean_field")));
+                .set("incremental_field", Optional.of(Arrays.asList("int32_field")));
         PluginTask task = config.loadConfig(PluginTask.class);
 
         dropCollection(task, MONGO_COLLECTION);
@@ -252,7 +287,28 @@ public class TestMongodbInputPlugin
         ConfigDiff diff = plugin.transaction(config, new Control());
         ConfigDiff lastRecord = diff.getNested("last_record");
 
-        assertEquals("32864", lastRecord.get(String.class, "int32_field"));
+        assertEquals("5", lastRecord.get(String.class, "int32_field"));
+    }
+
+    @Test
+    public void testRunWithLimitIncrementalLoad() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("id_field_name", "int32_field")
+                .set("incremental_field", Optional.of(Arrays.asList("int32_field", "double_field", "datetime_field", "boolean_field")))
+                .set("limit", 1);
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        ConfigDiff diff = plugin.transaction(config, new Control());
+        ConfigDiff lastRecord = diff.getNested("last_record");
+
+        assertEquals("1", lastRecord.get(String.class, "int32_field"));
         assertEquals("1.23", lastRecord.get(String.class, "double_field"));
         assertEquals("{$date=2015-01-27T10:23:49.000Z}", lastRecord.get(Map.class, "datetime_field").toString());
         assertEquals("true", lastRecord.get(String.class, "boolean_field"));
@@ -477,7 +533,7 @@ public class TestMongodbInputPlugin
                     .append("null_field", null)
                     .append("regex_field", new BsonRegularExpression(".+?"))
                     .append("javascript_field", new BsonJavaScript("var s = \"javascript\";"))
-                    .append("int32_field", 32864)
+                    .append("int32_field", 1)
                     .append("timestamp_field", new BsonTimestamp(1463991177, 4))
                     .append("int64_field", new BsonInt64(314159265))
                     .append("document_field", new Document("k", true))
@@ -486,14 +542,24 @@ public class TestMongodbInputPlugin
 
         documents.add(
             new Document("boolean_field", false)
+                    .append("int32_field", 2)
                     .append("document_field", new Document("k", 1))
         );
 
-        documents.add(new Document("document_field", new Document("k", 1.23)));
+        documents.add(
+            new Document("int32_field", 3)
+                    .append("document_field", new Document("k", 1.23))
+        );
 
-        documents.add(new Document("document_field", new Document("k", "v")));
+        documents.add(
+            new Document("int32_field", 4)
+                    .append("document_field", new Document("k", "v"))
+        );
 
-        documents.add(new Document("document_field", new Document("k", format.parse("2015-02-02T23:13:45.000Z"))));
+        documents.add(
+            new Document("int32_field", 5)
+                    .append("document_field", new Document("k", format.parse("2015-02-02T23:13:45.000Z")))
+        );
 
         return documents;
     }
@@ -533,7 +599,7 @@ public class TestMongodbInputPlugin
                 assertEquals("null", node.get("null_field").asText());
                 assertEquals("BsonRegularExpression{pattern='.+?', options=''}", node.get("regex_field").asText());
                 assertEquals("var s = \"javascript\";", node.get("javascript_field").asText());
-                assertEquals(32864L, node.get("int32_field").asLong());
+                assertEquals(1, node.get("int32_field").asLong());
                 assertEquals("1463991177", node.get("timestamp_field").asText());
                 assertEquals(314159265L, node.get("int64_field").asLong());
                 assertEquals("{\"k\":true}", node.get("document_field").toString());
