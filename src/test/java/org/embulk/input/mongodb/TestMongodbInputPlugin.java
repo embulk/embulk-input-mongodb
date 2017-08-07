@@ -507,49 +507,60 @@ public class TestMongodbInputPlugin
 
     private void assertValidRecords(Schema schema, MockPageOutput output) throws Exception
     {
+        assertValidRecords(schema, output, 5, 0);
+    }
+
+    private void assertValidRecords(Schema schema, MockPageOutput output, int limit, int skip) throws Exception
+    {
+        int maxRecordSize = 5;
+        int actualRecordSize = Math.min(maxRecordSize - skip, limit);
         List<Object[]> records = Pages.toObjects(schema, output.pages);
-        assertEquals(5, records.size());
+        assertEquals(actualRecordSize, records.size());
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.setDateFormat(getUTCDateFormat());
 
-        {
-            JsonNode node = mapper.readTree(records.get(0)[0].toString());
-            assertThat(1.23, is(node.get("double_field").asDouble()));
-            assertEquals("embulk", node.get("string_field").asText());
-            assertEquals("[1,2,3]", node.get("array_field").toString());
-            assertEquals("test", node.get("binary_field").asText());
-            assertEquals(true, node.get("boolean_field").asBoolean());
-            assertEquals("2015-01-27T10:23:49.000Z", node.get("datetime_field").asText());
-            assertEquals("null", node.get("null_field").asText());
-            assertEquals("BsonRegularExpression{pattern='.+?', options=''}", node.get("regex_field").asText());
-            assertEquals("var s = \"javascript\";", node.get("javascript_field").asText());
-            assertEquals(32864L, node.get("int32_field").asLong());
-            assertEquals("1463991177", node.get("timestamp_field").asText());
-            assertEquals(314159265L, node.get("int64_field").asLong());
-            assertEquals("{\"k\":true}", node.get("document_field").toString());
-            assertEquals("symbol", node.get("symbol_field").asText());
-        }
+        int recordIndex = 0;
+        for (int i = skip; i < actualRecordSize; i++) {
+            if (i == 0) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertThat(1.23, is(node.get("double_field").asDouble()));
+                assertEquals("embulk", node.get("string_field").asText());
+                assertEquals("[1,2,3]", node.get("array_field").toString());
+                assertEquals("test", node.get("binary_field").asText());
+                assertEquals(true, node.get("boolean_field").asBoolean());
+                assertEquals("2015-01-27T10:23:49.000Z", node.get("datetime_field").asText());
+                assertEquals("null", node.get("null_field").asText());
+                assertEquals("BsonRegularExpression{pattern='.+?', options=''}", node.get("regex_field").asText());
+                assertEquals("var s = \"javascript\";", node.get("javascript_field").asText());
+                assertEquals(32864L, node.get("int32_field").asLong());
+                assertEquals("1463991177", node.get("timestamp_field").asText());
+                assertEquals(314159265L, node.get("int64_field").asLong());
+                assertEquals("{\"k\":true}", node.get("document_field").toString());
+                assertEquals("symbol", node.get("symbol_field").asText());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(1)[0].toString());
-            assertEquals(false, node.get("boolean_field").asBoolean());
-            assertEquals("{\"k\":1}", node.get("document_field").toString());
-        }
+            if (i == 1) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals(false, node.get("boolean_field").asBoolean());
+                assertEquals("{\"k\":1}", node.get("document_field").toString());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(2)[0].toString());
-            assertEquals("{\"k\":1.23}", node.get("document_field").toString());
-        }
+            if (i == 2) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals("{\"k\":1.23}", node.get("document_field").toString());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(3)[0].toString());
-            assertEquals("{\"k\":\"v\"}", node.get("document_field").toString());
-        }
+            if (i == 3) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals("{\"k\":\"v\"}", node.get("document_field").toString());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(4)[0].toString());
-            assertEquals("{\"k\":\"2015-02-02T23:13:45.000Z\"}", node.get("document_field").toString());
+            if (i == 4) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals("{\"k\":\"2015-02-02T23:13:45.000Z\"}", node.get("document_field").toString());
+            }
+            recordIndex++;
         }
     }
 
