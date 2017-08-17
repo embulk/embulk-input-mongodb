@@ -41,7 +41,7 @@ This plugin only works with embulk >= 0.8.8.
 - **incremental_field** List of field name (list, optional, can't use with sort option)
 - **last_record** Last loaded record for incremental load (hash, optional)
 - **stop_on_invalid_record** Stop bulk load transaction if a document includes invalid record (such as unsupported object type) (boolean, optional, default: false)
-- **json_column_name**: column name used in outputs (string, optional, default: "json")
+- **json_column_name**: column name used in outputs (string, optional, default: "record")
 
 ## Example
 
