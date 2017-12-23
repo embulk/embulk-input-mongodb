@@ -97,6 +97,8 @@ public class TestMongodbInputPlugin
         PluginTask task = config.loadConfig(PluginTask.class);
         assertEquals("{}", task.getQuery());
         assertEquals("{}", task.getSort());
+        assertEquals(Optional.<Integer>absent(), task.getLimit());
+        assertEquals(Optional.<Integer>absent(), task.getSkip());
         assertEquals((long) 10000, (long) task.getBatchSize());
         assertEquals("record", task.getJsonColumnName());
         assertEquals(Optional.absent(), task.getIncrementalField());
@@ -134,12 +136,24 @@ public class TestMongodbInputPlugin
     }
 
     @Test(expected = ConfigException.class)
-    public void checkInvalidOptionCombination()
+    public void checkSortCannotUseWithIncremental()
     {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", MONGO_COLLECTION)
                 .set("sort", "{ \"field1\": 1 }")
+                .set("incremental_field", Optional.of(Arrays.asList("account")));
+
+        plugin.transaction(config, new Control());
+    }
+
+    @Test(expected = ConfigException.class)
+    public void checkSkipCannotUseWithIncremental()
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("skip", 10)
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
 
         plugin.transaction(config, new Control());
@@ -201,6 +215,41 @@ public class TestMongodbInputPlugin
     }
 
     @Test
+    public void testRunWithLimit() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("limit", 1);
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
+        assertValidRecords(getFieldSchema(), output, 1, 0);
+    }
+
+    @Test
+    public void testRunWithLimitSkip() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("limit", 3)
+                .set("skip", 1);
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
+        assertValidRecords(getFieldSchema(), output, 3, 1);
+    }
+
+    @Test
     public void testRunWithConnectionParams() throws Exception
     {
         MongoClientURI uri = new MongoClientURI(MONGO_URI);
@@ -228,7 +277,7 @@ public class TestMongodbInputPlugin
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", MONGO_URI)
                 .set("collection", MONGO_COLLECTION)
-                .set("incremental_field", Optional.of(Arrays.asList("int32_field", "double_field", "datetime_field", "boolean_field")));
+                .set("incremental_field", Optional.of(Arrays.asList("int32_field")));
         PluginTask task = config.loadConfig(PluginTask.class);
 
         dropCollection(task, MONGO_COLLECTION);
@@ -238,7 +287,28 @@ public class TestMongodbInputPlugin
         ConfigDiff diff = plugin.transaction(config, new Control());
         ConfigDiff lastRecord = diff.getNested("last_record");
 
-        assertEquals("32864", lastRecord.get(String.class, "int32_field"));
+        assertEquals("5", lastRecord.get(String.class, "int32_field"));
+    }
+
+    @Test
+    public void testRunWithLimitIncrementalLoad() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("id_field_name", "int32_field")
+                .set("incremental_field", Optional.of(Arrays.asList("int32_field", "double_field", "datetime_field", "boolean_field")))
+                .set("limit", 1);
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        ConfigDiff diff = plugin.transaction(config, new Control());
+        ConfigDiff lastRecord = diff.getNested("last_record");
+
+        assertEquals("1", lastRecord.get(String.class, "int32_field"));
         assertEquals("1.23", lastRecord.get(String.class, "double_field"));
         assertEquals("{$date=2015-01-27T10:23:49.000Z}", lastRecord.get(Map.class, "datetime_field").toString());
         assertEquals("true", lastRecord.get(String.class, "boolean_field"));
@@ -463,7 +533,7 @@ public class TestMongodbInputPlugin
                     .append("null_field", null)
                     .append("regex_field", new BsonRegularExpression(".+?"))
                     .append("javascript_field", new BsonJavaScript("var s = \"javascript\";"))
-                    .append("int32_field", 32864)
+                    .append("int32_field", 1)
                     .append("timestamp_field", new BsonTimestamp(1463991177, 4))
                     .append("int64_field", new BsonInt64(314159265))
                     .append("document_field", new Document("k", true))
@@ -472,14 +542,24 @@ public class TestMongodbInputPlugin
 
         documents.add(
             new Document("boolean_field", false)
+                    .append("int32_field", 2)
                     .append("document_field", new Document("k", 1))
         );
 
-        documents.add(new Document("document_field", new Document("k", 1.23)));
+        documents.add(
+            new Document("int32_field", 3)
+                    .append("document_field", new Document("k", 1.23))
+        );
 
-        documents.add(new Document("document_field", new Document("k", "v")));
+        documents.add(
+            new Document("int32_field", 4)
+                    .append("document_field", new Document("k", "v"))
+        );
 
-        documents.add(new Document("document_field", new Document("k", format.parse("2015-02-02T23:13:45.000Z"))));
+        documents.add(
+            new Document("int32_field", 5)
+                    .append("document_field", new Document("k", format.parse("2015-02-02T23:13:45.000Z")))
+        );
 
         return documents;
     }
@@ -493,49 +573,60 @@ public class TestMongodbInputPlugin
 
     private void assertValidRecords(Schema schema, MockPageOutput output) throws Exception
     {
+        assertValidRecords(schema, output, 5, 0);
+    }
+
+    private void assertValidRecords(Schema schema, MockPageOutput output, int limit, int skip) throws Exception
+    {
+        int maxRecordSize = 5;
+        int actualRecordSize = Math.min(maxRecordSize - skip, limit);
         List<Object[]> records = Pages.toObjects(schema, output.pages);
-        assertEquals(5, records.size());
+        assertEquals(actualRecordSize, records.size());
 
         ObjectMapper mapper = new ObjectMapper();
         mapper.setDateFormat(getUTCDateFormat());
 
-        {
-            JsonNode node = mapper.readTree(records.get(0)[0].toString());
-            assertThat(1.23, is(node.get("double_field").asDouble()));
-            assertEquals("embulk", node.get("string_field").asText());
-            assertEquals("[1,2,3]", node.get("array_field").toString());
-            assertEquals("test", node.get("binary_field").asText());
-            assertEquals(true, node.get("boolean_field").asBoolean());
-            assertEquals("2015-01-27T10:23:49.000Z", node.get("datetime_field").asText());
-            assertEquals("null", node.get("null_field").asText());
-            assertEquals("BsonRegularExpression{pattern='.+?', options=''}", node.get("regex_field").asText());
-            assertEquals("var s = \"javascript\";", node.get("javascript_field").asText());
-            assertEquals(32864L, node.get("int32_field").asLong());
-            assertEquals("1463991177", node.get("timestamp_field").asText());
-            assertEquals(314159265L, node.get("int64_field").asLong());
-            assertEquals("{\"k\":true}", node.get("document_field").toString());
-            assertEquals("symbol", node.get("symbol_field").asText());
-        }
+        int recordIndex = 0;
+        for (int i = skip; i < actualRecordSize; i++) {
+            if (i == 0) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertThat(1.23, is(node.get("double_field").asDouble()));
+                assertEquals("embulk", node.get("string_field").asText());
+                assertEquals("[1,2,3]", node.get("array_field").toString());
+                assertEquals("test", node.get("binary_field").asText());
+                assertEquals(true, node.get("boolean_field").asBoolean());
+                assertEquals("2015-01-27T10:23:49.000Z", node.get("datetime_field").asText());
+                assertEquals("null", node.get("null_field").asText());
+                assertEquals("BsonRegularExpression{pattern='.+?', options=''}", node.get("regex_field").asText());
+                assertEquals("var s = \"javascript\";", node.get("javascript_field").asText());
+                assertEquals(1, node.get("int32_field").asLong());
+                assertEquals("1463991177", node.get("timestamp_field").asText());
+                assertEquals(314159265L, node.get("int64_field").asLong());
+                assertEquals("{\"k\":true}", node.get("document_field").toString());
+                assertEquals("symbol", node.get("symbol_field").asText());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(1)[0].toString());
-            assertEquals(false, node.get("boolean_field").asBoolean());
-            assertEquals("{\"k\":1}", node.get("document_field").toString());
-        }
+            if (i == 1) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals(false, node.get("boolean_field").asBoolean());
+                assertEquals("{\"k\":1}", node.get("document_field").toString());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(2)[0].toString());
-            assertEquals("{\"k\":1.23}", node.get("document_field").toString());
-        }
+            if (i == 2) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals("{\"k\":1.23}", node.get("document_field").toString());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(3)[0].toString());
-            assertEquals("{\"k\":\"v\"}", node.get("document_field").toString());
-        }
+            if (i == 3) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals("{\"k\":\"v\"}", node.get("document_field").toString());
+            }
 
-        {
-            JsonNode node = mapper.readTree(records.get(4)[0].toString());
-            assertEquals("{\"k\":\"2015-02-02T23:13:45.000Z\"}", node.get("document_field").toString());
+            if (i == 4) {
+                JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
+                assertEquals("{\"k\":\"2015-02-02T23:13:45.000Z\"}", node.get("document_field").toString());
+            }
+            recordIndex++;
         }
     }
 
