@@ -12,6 +12,7 @@ env:
     - MONGO_URI=mongodb://localhost:27017/my_database
 
 sudo: required
+dist: precise
 
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
