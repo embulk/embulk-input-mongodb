@@ -34,12 +34,12 @@ public class ValueCodec implements Codec<Value>
     private final SimpleDateFormat formatter;
     private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
     private final boolean stopOnInvalidRecord;
-    private final MongodbInputPlugin.PluginTask task;
+    private final PluginTask task;
     private final Optional<List<String>> incrementalField;
     private Map<String, Object> lastRecord;
     private Map<String, String> lastRecordType;
 
-    public ValueCodec(boolean stopOnInvalidRecord, MongodbInputPlugin.PluginTask task)
+    public ValueCodec(boolean stopOnInvalidRecord, PluginTask task)
     {
         this.formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.ENGLISH);
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
