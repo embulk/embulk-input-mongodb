@@ -16,16 +16,12 @@ import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonParseException;
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
-import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.DataSource;
 import org.embulk.config.DataSourceImpl;
 import org.embulk.config.ModelManager;
-import org.embulk.config.Task;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.BufferAllocator;
@@ -35,12 +31,9 @@ import org.embulk.spi.InputPlugin;
 import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
-import org.embulk.spi.SchemaConfig;
 import org.embulk.spi.type.Types;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
-
-import javax.validation.constraints.Min;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -54,99 +47,6 @@ import java.util.Map;
 public class MongodbInputPlugin
         implements InputPlugin
 {
-    public interface HostTask
-            extends Task
-    {
-        @Config("host")
-        String getHost();
-
-        @Config("port")
-        @ConfigDefault("27017")
-        int getPort();
-    }
-
-    public interface PluginTask
-            extends Task
-    {
-        // MongoDB connection string URI
-        @Config("uri")
-        @ConfigDefault("null")
-        Optional<String> getUri();
-
-        @Config("hosts")
-        @ConfigDefault("null")
-        Optional<List<HostTask>> getHosts();
-
-        @Config("user")
-        @ConfigDefault("null")
-        Optional<String> getUser();
-
-        @Config("password")
-        @ConfigDefault("null")
-        Optional<String> getPassword();
-
-        @Config("database")
-        @ConfigDefault("null")
-        Optional<String> getDatabase();
-
-        @Config("collection")
-        String getCollection();
-
-        @Config("fields")
-        @ConfigDefault("null")
-        Optional<SchemaConfig> getFields();
-
-        @Config("projection")
-        @ConfigDefault("\"{}\"")
-        String getProjection();
-
-        @Config("query")
-        @ConfigDefault("\"{}\"")
-        String getQuery();
-        void setQuery(String query);
-
-        @Config("sort")
-        @ConfigDefault("\"{}\"")
-        String getSort();
-        void setSort(String sort);
-
-        @Config("limit")
-        @ConfigDefault("null")
-        Optional<Integer> getLimit();
-
-        @Config("skip")
-        @ConfigDefault("null")
-        Optional<Integer> getSkip();
-
-        @Config("id_field_name")
-        @ConfigDefault("\"_id\"")
-        String getIdFieldName();
-
-        @Config("batch_size")
-        @ConfigDefault("10000")
-        @Min(1)
-        int getBatchSize();
-
-        @Config("stop_on_invalid_record")
-        @ConfigDefault("false")
-        boolean getStopOnInvalidRecord();
-
-        @Config("json_column_name")
-        @ConfigDefault("\"record\"")
-        String getJsonColumnName();
-
-        @Config("incremental_field")
-        @ConfigDefault("null")
-        Optional<List<String>> getIncrementalField();
-
-        @Config("last_record")
-        @ConfigDefault("null")
-        Optional<Map<String, Object>> getLastRecord();
-
-        @ConfigInject
-        BufferAllocator getBufferAllocator();
-    }
-
     private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
 
     @Override
