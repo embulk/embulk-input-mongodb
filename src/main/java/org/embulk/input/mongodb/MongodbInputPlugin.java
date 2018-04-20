@@ -12,10 +12,10 @@ import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.util.JSONParseException;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
+import org.bson.json.JsonParseException;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
@@ -414,7 +414,7 @@ public class MongodbInputPlugin
 
             return result;
         }
-        catch (JSONParseException | IOException ex) {
+        catch (JsonParseException | IOException ex) {
             throw new ConfigException("Could not generate new query for incremental load.");
         }
     }
@@ -424,7 +424,7 @@ public class MongodbInputPlugin
         try {
             BasicDBObject.parse(jsonString);
         }
-        catch (JSONParseException ex) {
+        catch (JsonParseException ex) {
             throw new ConfigException(String.format("Invalid JSON string was given for '%s' parameter. [%s]", name, jsonString));
         }
     }
