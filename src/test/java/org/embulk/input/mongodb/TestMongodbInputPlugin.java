@@ -23,7 +23,6 @@ import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
-import org.embulk.input.mongodb.MongodbInputPlugin.PluginTask;
 import org.embulk.spi.Column;
 import org.embulk.spi.Exec;
 import org.embulk.spi.InputPlugin;
