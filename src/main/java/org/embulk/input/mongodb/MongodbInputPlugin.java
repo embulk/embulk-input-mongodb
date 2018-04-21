@@ -3,6 +3,7 @@ package org.embulk.input.mongodb;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
+import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.MongoCredential;
@@ -11,11 +12,10 @@ import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
+import org.bson.json.JsonParseException;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
@@ -132,9 +132,9 @@ public class MongodbInputPlugin
             throw new ConfigException(ex);
         }
 
-        Bson query = (Bson) JSON.parse(task.getQuery());
-        Bson projection = (Bson) JSON.parse(task.getProjection());
-        Bson sort = (Bson) JSON.parse(task.getSort());
+        Bson query = BasicDBObject.parse(task.getQuery());
+        Bson projection = BasicDBObject.parse(task.getProjection());
+        Bson sort = BasicDBObject.parse(task.getSort());
 
         log.trace("query: {}", query);
         log.trace("projection: {}", projection);
@@ -314,7 +314,7 @@ public class MongodbInputPlugin
 
             return result;
         }
-        catch (JSONParseException | IOException ex) {
+        catch (JsonParseException | IOException ex) {
             throw new ConfigException("Could not generate new query for incremental load.");
         }
     }
@@ -322,9 +322,9 @@ public class MongodbInputPlugin
     private void validateJsonField(String name, String jsonString)
     {
         try {
-            JSON.parse(jsonString);
+            BasicDBObject.parse(jsonString);
         }
-        catch (JSONParseException ex) {
+        catch (JsonParseException ex) {
             throw new ConfigException(String.format("Invalid JSON string was given for '%s' parameter. [%s]", name, jsonString));
         }
     }
