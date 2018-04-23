@@ -313,6 +313,35 @@ public class TestMongodbInputPlugin
         assertEquals("true", lastRecord.get(String.class, "boolean_field"));
     }
 
+    @Test
+    public void testRunWithLimitIncrementalLoadWithNoRecord() throws Exception
+    {
+        Map<String, Object> previousLastRecord = new HashMap<>();
+        previousLastRecord.put("int32_field", 1);
+        previousLastRecord.put("datetime_field", "{$date=2015-01-27T10:23:49.000Z}");
+        previousLastRecord.put("boolean_field", true);
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("id_field_name", "int32_field")
+                .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
+                .set("incremental_field", Optional.of(Arrays.asList("int32_field", "datetime_field", "boolean_field")))
+                .set("last_record", previousLastRecord);
+
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        ConfigDiff diff = plugin.transaction(config, new Control());
+        ConfigDiff lastRecord = diff.getNested("last_record");
+
+        assertEquals("1", lastRecord.get(String.class, "int32_field"));
+        assertEquals("{$date=2015-01-27T10:23:49.000Z}", lastRecord.get(String.class, "datetime_field"));
+        assertEquals("true", lastRecord.get(String.class, "boolean_field"));
+    }
+
     @Test(expected = ConfigException.class)
     public void testRunWithIncrementalLoadUnsupportedType() throws Exception
     {
