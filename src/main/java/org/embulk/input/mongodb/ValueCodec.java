@@ -37,6 +37,7 @@ public class ValueCodec implements Codec<Value>
     private final PluginTask task;
     private final Optional<List<String>> incrementalField;
     private Map<String, Object> lastRecord;
+    private long processedRecordCount = 0;
     private Map<String, String> lastRecordType;
 
     public ValueCodec(boolean stopOnInvalidRecord, PluginTask task)
@@ -84,6 +85,7 @@ public class ValueCodec implements Codec<Value>
                 log.warn(String.format("Skipped document because field '%s' contains unsupported object type [%s]",
                         fieldName, type));
             }
+            this.processedRecordCount++;
         }
         reader.readEndDocument();
 
@@ -164,6 +166,11 @@ public class ValueCodec implements Codec<Value>
     public Map<String, Object> getLastRecord()
     {
         return this.lastRecord;
+    }
+
+    public Long getProcessedRecordCount()
+    {
+        return this.processedRecordCount;
     }
 
     public Map<String, String> getLastRecordType()
