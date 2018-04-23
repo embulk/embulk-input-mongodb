@@ -163,9 +163,11 @@ public class MongodbInputPlugin
         }
 
         pageBuilder.finish();
+        return updateTaskReport(Exec.newTaskReport(), valueCodec);
+    }
 
-        TaskReport report = Exec.newTaskReport();
-
+    private TaskReport updateTaskReport(TaskReport report, ValueCodec valueCodec)
+    {
         if (valueCodec.getLastRecord() != null) {
             DataSource lastRecord = new DataSourceImpl(Exec.getInjector().getInstance(ModelManager.class));
             for (String k : valueCodec.getLastRecord().keySet()) {
