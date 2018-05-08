@@ -163,11 +163,13 @@ public class MongodbInputPlugin
         }
 
         pageBuilder.finish();
+        return updateTaskReport(Exec.newTaskReport(), valueCodec, task);
+    }
 
-        TaskReport report = Exec.newTaskReport();
-
-        if (valueCodec.getLastRecord() != null) {
-            DataSource lastRecord = new DataSourceImpl(Exec.getInjector().getInstance(ModelManager.class));
+    private TaskReport updateTaskReport(TaskReport report, ValueCodec valueCodec, PluginTask task)
+    {
+        DataSource lastRecord = new DataSourceImpl(Exec.getInjector().getInstance(ModelManager.class));
+        if (valueCodec.getLastRecord() != null && valueCodec.getProcessedRecordCount() > 0) {
             for (String k : valueCodec.getLastRecord().keySet()) {
                 String value = valueCodec.getLastRecord().get(k).toString();
                 Map<String, String> types = valueCodec.getLastRecordType();
@@ -199,8 +201,15 @@ public class MongodbInputPlugin
                         lastRecord.set(k, value);
                 }
             }
-            report.setNested("last_record", lastRecord);
         }
+        else if (task.getIncrementalField().isPresent() && task.getLastRecord().isPresent()) {
+            for (String field : task.getIncrementalField().get()) {
+                if (task.getLastRecord().get().containsKey(field)) {
+                    lastRecord.set(field, task.getLastRecord().get().get(field));
+                }
+            }
+        }
+        report.setNested("last_record", lastRecord);
         return report;
     }
 
