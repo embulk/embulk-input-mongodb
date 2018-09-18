@@ -368,7 +368,7 @@ public class MongodbInputPlugin
     private void validateJsonField(String name, String jsonString)
     {
         try {
-            BasicDBObject.parse(jsonString);
+            Document.parse(jsonString);
         }
         catch (JsonParseException ex) {
             throw new ConfigException(String.format("Invalid JSON string was given for '%s' parameter. [%s]", name, jsonString));
