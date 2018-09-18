@@ -12,6 +12,7 @@ import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
@@ -64,6 +65,24 @@ public class MongodbInputPlugin
             throw new ConfigException("both of skip and incremental_load can't be used together");
         }
 
+        if (task.getAggregation().isPresent()) {
+            if (task.getIncrementalField().isPresent()) {
+                throw new ConfigException("both of aggregation and incremental_load can't be used together");
+            }
+            if (!task.getSort().equals("{}")) {
+                throw new ConfigException("both of sort and aggregation can't be used together");
+            }
+            if (task.getLimit().isPresent()) {
+                throw new ConfigException("both of limit and aggregation can't be used together");
+            }
+            if (task.getSkip().isPresent()) {
+                throw new ConfigException("both of skip and aggregation can't be used together");
+            }
+            if (!task.getQuery().equals("{}")) {
+                throw new ConfigException("both of query and aggregation can't be used together");
+            }
+        }
+
         Map<String, String> newCondition = buildIncrementalCondition(task);
         task.setQuery(newCondition.get("query"));
         task.setSort(newCondition.get("sort"));
@@ -71,6 +90,9 @@ public class MongodbInputPlugin
         validateJsonField("projection", task.getProjection());
         validateJsonField("query", task.getQuery());
         validateJsonField("sort", task.getSort());
+        if (task.getAggregation().isPresent()) {
+            validateJsonField("aggrigation", task.getAggregation().get());
+        }
 
         // Connect once to throw ConfigException in earlier stage of excecution
         try {
@@ -146,20 +168,35 @@ public class MongodbInputPlugin
             log.trace("skip: {}", task.getSkip());
         }
 
-        try (MongoCursor<Value> cursor = collection
-                .find(query)
-                .projection(projection)
-                .sort(sort)
-                .batchSize(task.getBatchSize())
-                .limit(task.getLimit().or(0))
-                .skip(task.getSkip().or(0))
-                .iterator()) {
-            while (cursor.hasNext()) {
-                pageBuilder.setJson(column, cursor.next());
-                pageBuilder.addRecord();
+        if (task.getAggregation().isPresent()) {
+            Bson aggregationString = Document.parse(task.getAggregation().get());
+            List<Bson> aggregation = Arrays.asList(aggregationString);
+            try (MongoCursor<Value> cursor = collection
+                    .aggregate(aggregation).iterator()) {
+                while (cursor.hasNext()) {
+                    pageBuilder.setJson(column, cursor.next());
+                    pageBuilder.addRecord();
+                }
+            } catch (MongoException ex) {
+                Throwables.propagate(ex);
             }
-        } catch (MongoException ex) {
-            Throwables.propagate(ex);
+        }
+        else {
+            try (MongoCursor<Value> cursor = collection
+                    .find(query)
+                    .projection(projection)
+                    .sort(sort)
+                    .batchSize(task.getBatchSize())
+                    .limit(task.getLimit().or(0))
+                    .skip(task.getSkip().or(0))
+                    .iterator()) {
+                while (cursor.hasNext()) {
+                    pageBuilder.setJson(column, cursor.next());
+                    pageBuilder.addRecord();
+                }
+            } catch (MongoException ex) {
+                Throwables.propagate(ex);
+            }
         }
 
         pageBuilder.finish();
