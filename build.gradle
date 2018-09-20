@@ -25,7 +25,7 @@ targetCompatibility = 1.8
 dependencies {
     compile  "org.embulk:embulk-core:0.8.8"
     provided "org.embulk:embulk-core:0.8.8"
-    compile "org.mongodb:mongo-java-driver:3.6.1"
+    compile "org.mongodb:mongo-java-driver:3.8.1"
 
     testCompile "junit:junit:4.+"
     testCompile "org.embulk:embulk-core:0.8.8:tests"

@@ -171,6 +171,19 @@ public class TestMongodbInputPlugin
         plugin.transaction(config, new Control());
     }
 
+    @Test(expected = ConfigException.class)
+    public void checkAggregationWithOtherOption()
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("query", "{\"key\":\"valid_value\"}")
+                .set("aggregation", "{$match: { account: { $gt: 32864}}}")
+                .set("incremental_field", Optional.of(Arrays.asList("account")));
+
+        plugin.transaction(config, new Control());
+    }
+
     @Test
     public void testResume()
     {

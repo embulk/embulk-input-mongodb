@@ -53,6 +53,10 @@ public interface PluginTask
     String getQuery();
     void setQuery(String query);
 
+    @Config("aggregation")
+    @ConfigDefault("null")
+    Optional<String> getAggregation();
+
     @Config("sort")
     @ConfigDefault("\"{}\"")
     String getSort();
