@@ -37,6 +37,7 @@ This plugin only works with embulk >= 0.8.8.
 - **query**: A JSON document used for [querying](https://docs.mongodb.com/manual/tutorial/query-documents/) on the source collection. Documents are loaded from the colleciton if they match with this condition. (string, optional)
 - **projection**: A JSON document used for [projection](https://docs.mongodb.com/manual/reference/operator/projection/positional/) on query results. Fields in a document are used only if they match with this condition. (string, optional)
 - **sort**: Ordering of results (string, optional)
+- **aggregation**: Aggregation query (string, optional) See [Aggregation query](#aggregation-query) for more detail.
 - **batch_size**: Limits the number of objects returned in one [batch](http://api.mongodb.com/java/current/com/mongodb/DBCursor.html#batchSize-int-) (integer, optional, default: 10000)
 - **incremental_field** List of field name (list, optional, can't use with sort option)
 - **last_record** Last loaded record for incremental load (hash, optional)
@@ -127,6 +128,20 @@ in:
 ```
 $ embulk run /path/to/config.yml -c config-diff.yml
 ```
+
+### Aggregation query
+
+This plugin supports aggregation query. You can write complex query like below.
+
+`aggregation` option can't be used with `sort`, `limit`, `skip`, `query` option. Incremental load also doesn't work with aggregation query.
+
+```yaml
+in:
+  type: mongodb
+  aggregation: { $match: {"int32_field":{"$gte":5 },} }
+```
+
+See also [Aggregation — MongoDB Manual](https://docs.mongodb.com/manual/aggregation/) and [Aggregation Pipeline Stages — MongoDB Manual](https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/)
 
 ### Advanced usage with filter plugins
 
