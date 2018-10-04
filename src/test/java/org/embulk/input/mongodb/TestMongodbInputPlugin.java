@@ -394,6 +394,25 @@ public class TestMongodbInputPlugin
     }
 
     @Test
+    public void testRunWithAggregation() throws Exception
+    {
+        ConfigSource config = Exec.newConfigSource()
+                .set("uri", MONGO_URI)
+                .set("collection", MONGO_COLLECTION)
+                .set("id_field_name", "int32_field")
+                .set("aggregation", "{ $match: {\"int32_field\":{\"$gte\":5 },} }");
+
+        PluginTask task = config.loadConfig(PluginTask.class);
+
+        dropCollection(task, MONGO_COLLECTION);
+        createCollection(task, MONGO_COLLECTION);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
+        assertValidRecordsForAggregation(getFieldSchema(), output);
+    }
+
+    @Test
     public void testNormalize() throws Exception
     {
         PluginTask task = config.loadConfig(PluginTask.class);
@@ -615,6 +634,11 @@ public class TestMongodbInputPlugin
     private void assertValidRecords(Schema schema, MockPageOutput output) throws Exception
     {
         assertValidRecords(schema, output, 5, 0);
+    }
+
+    private void assertValidRecordsForAggregation(Schema schema, MockPageOutput output) throws Exception
+    {
+        assertValidRecords(schema, output, 1, 4);
     }
 
     private void assertValidRecords(Schema schema, MockPageOutput output, int limit, int skip) throws Exception
