@@ -1,0 +1,40 @@
+version: '3.1'
+services:
+  mongodb:
+    container_name: embulk-input-mongodb_server
+    image: mongo:3.6
+    restart: always
+    ports:
+    - 27017:27017
+    - 27018:27018
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: tiger
+    volumes:
+    - mongodb-data:/data/db
+    - mongodb-configdb:/data/configdb
+
+  mongo-express:
+    container_name: mongo-express
+    image: mongo-express
+    restart: always
+    ports:
+    - 8081:8081
+    depends_on:
+      - mongodb
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: tiger
+      ME_CONFIG_MONGODB_SERVER: mongodb
+
+  mongoClientTemp:
+    container_name: mongoClientTemp
+    image: mongo:3.6
+    depends_on:
+    - mongodb
+    command: mongo --host mongodb -u admin -p tiger admin --eval "db.getSiblingDB('mydb').createUser({user:'mongo_user', pwd:'dbpass', roles:[{role:'readWrite',db:'mydb'}]});"
+volumes:
+  mongodb-data:
+    driver: local
+  mongodb-configdb:
+    driver: local

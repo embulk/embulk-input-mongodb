@@ -188,44 +188,21 @@ $ ./gradlew gem
 
 ## Test
 
-```
+Firstly install Docker and Docker compose then `docker-compose up -d`,
+so that an FTP server will be locally launched then you can run tests with `./gradlew test`.
+
+```sh
+$ docker-compose up -d
+Creating embulk-input-mongodb_server ... done
+Creating mongo-express               ... done
+Creating mongoClientTemp             ... done
+
+$ docker-compose ps
+           Name                          Command                 State                            Ports
+------------------------------------------------------------------------------------------------------------------------------
+embulk-input-mongodb_server   docker-entrypoint.sh mongod      Up           0.0.0.0:27017->27017/tcp, 0.0.0.0:27018->27018/tcp
+mongo-express                 tini -- /docker-entrypoint ...   Up           0.0.0.0:8081->8081/tcp
+mongoClientTemp               docker-entrypoint.sh mongo ...   Restarting
+
 $ ./gradlew test  # -t to watch change of files and rebuild continuously
-```
-
-To run unit tests, we need to configure the following environment variables.
-
-When environment variables are not set, skip almost test cases.
-
-```
-MONGO_URI
-MONGO_COLLECTION
-```
-
-If you're using Mac OS X El Capitan and GUI Applications(IDE), like as follows.
-```xml
-$ vi ~/Library/LaunchAgents/environment.plist
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>my.startup</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>sh</string>
-    <string>-c</string>
-    <string>
-      launchctl setenv MONGO_URI mongodb://myuser:mypassword@localhost:27017/my_database
-      launchctl setenv MONGO_COLLECTION my_collection
-    </string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-</dict>
-</plist>
-
-$ launchctl load ~/Library/LaunchAgents/environment.plist
-$ launchctl getenv MONGO_URI //try to get value.
-
-Then start your applications.
 ```

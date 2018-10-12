@@ -31,7 +31,6 @@ import org.embulk.spi.TestPageBuilderReader.MockPageOutput;
 import org.embulk.spi.type.Types;
 import org.embulk.spi.util.Pages;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -53,8 +52,8 @@ import static org.junit.Assert.assertThat;
 
 public class TestMongodbInputPlugin
 {
-    private static String MONGO_URI;
-    private static String MONGO_COLLECTION;
+    private final String MONGO_URI = "mongodb://mongo_user:dbpass@localhost:27017/mydb";
+    private final String MONGO_COLLECTION = "my_collection";
 
     @Rule
     public EmbulkTestRuntime runtime = new EmbulkTestRuntime();
@@ -66,20 +65,8 @@ public class TestMongodbInputPlugin
     private MongodbInputPlugin plugin;
     private MockPageOutput output;
 
-    /*
-     * This test case requires environment variables
-     *   MONGO_URI
-     *   MONGO_COLLECTION
-     */
-    @BeforeClass
-    public static void initializeConstant()
-    {
-        MONGO_URI = System.getenv("MONGO_URI");
-        MONGO_COLLECTION = System.getenv("MONGO_COLLECTION");
-    }
-
     @Before
-    public void createResources() throws Exception
+    public void createResources()
     {
         config = config();
         plugin = new MongodbInputPlugin();
