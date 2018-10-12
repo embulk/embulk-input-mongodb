@@ -52,8 +52,8 @@ import static org.junit.Assert.assertThat;
 
 public class TestMongodbInputPlugin
 {
-    private final String MONGO_URI = "mongodb://mongo_user:dbpass@localhost:27017/mydb";
-    private final String MONGO_COLLECTION = "my_collection";
+    private final String mongoUri = "mongodb://mongo_user:dbpass@localhost:27017/mydb";
+    private final String mongoCollection = "my_collection";
 
     @Rule
     public EmbulkTestRuntime runtime = new EmbulkTestRuntime();
@@ -77,8 +77,8 @@ public class TestMongodbInputPlugin
     public void checkDefaultValues()
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION);
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection);
 
         PluginTask task = config.loadConfig(PluginTask.class);
         assertEquals("{}", task.getQuery());
@@ -96,7 +96,7 @@ public class TestMongodbInputPlugin
     {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", null)
-                .set("collection", MONGO_COLLECTION);
+                .set("collection", mongoCollection);
 
         plugin.transaction(config, new Control());
     }
@@ -106,7 +106,7 @@ public class TestMongodbInputPlugin
     {
         ConfigSource config = Exec.newConfigSource()
                 .set("uri", "mongodb://mongouser:password@non-exists.example.com:23490/test")
-                .set("collection", MONGO_COLLECTION);
+                .set("collection", mongoCollection);
 
         plugin.transaction(config, new Control());
     }
@@ -115,7 +115,7 @@ public class TestMongodbInputPlugin
     public void checkDefaultValuesCollectionIsNull()
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
+                .set("uri", mongoUri)
                 .set("collection", null);
 
         plugin.transaction(config, new Control());
@@ -125,8 +125,8 @@ public class TestMongodbInputPlugin
     public void checkSortCannotUseWithIncremental()
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("sort", "{ \"field1\": 1 }")
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
 
@@ -137,8 +137,8 @@ public class TestMongodbInputPlugin
     public void checkSkipCannotUseWithIncremental()
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("skip", 10)
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
 
@@ -149,8 +149,8 @@ public class TestMongodbInputPlugin
     public void checkInvalidQueryOption()
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("query", "{\"key\":invalid_value}")
                 .set("last_record", 0)
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
@@ -162,8 +162,8 @@ public class TestMongodbInputPlugin
     public void checkAggregationWithOtherOption()
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("query", "{\"key\":\"valid_value\"}")
                 .set("aggregation", "{$match: { account: { $gt: 32864}}}")
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
@@ -205,8 +205,8 @@ public class TestMongodbInputPlugin
     {
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         plugin.transaction(config, new Control());
@@ -217,13 +217,13 @@ public class TestMongodbInputPlugin
     public void testRunWithLimit() throws Exception
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("limit", 1);
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         plugin.transaction(config, new Control());
@@ -234,14 +234,14 @@ public class TestMongodbInputPlugin
     public void testRunWithLimitSkip() throws Exception
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("limit", 3)
                 .set("skip", 1);
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         plugin.transaction(config, new Control());
@@ -251,7 +251,7 @@ public class TestMongodbInputPlugin
     @Test
     public void testRunWithConnectionParams() throws Exception
     {
-        MongoClientURI uri = new MongoClientURI(MONGO_URI);
+        MongoClientURI uri = new MongoClientURI(mongoUri);
         String host = uri.getHosts().get(0);
         Integer port = (host.split(":")[1] != null) ? Integer.valueOf(host.split(":")[1]) : 27017;
         ConfigSource config = Exec.newConfigSource()
@@ -259,11 +259,11 @@ public class TestMongodbInputPlugin
                 .set("user", uri.getUsername())
                 .set("password", uri.getPassword())
                 .set("database", uri.getDatabase())
-                .set("collection", MONGO_COLLECTION);
+                .set("collection", mongoCollection);
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         plugin.transaction(config, new Control());
@@ -274,13 +274,13 @@ public class TestMongodbInputPlugin
     public void testRunWithIncrementalLoad() throws Exception
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("int32_field")));
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         ConfigDiff diff = plugin.transaction(config, new Control());
@@ -293,15 +293,15 @@ public class TestMongodbInputPlugin
     public void testRunWithLimitIncrementalLoad() throws Exception
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("id_field_name", "int32_field")
                 .set("incremental_field", Optional.of(Arrays.asList("int32_field", "double_field", "datetime_field", "boolean_field")))
                 .set("limit", 1);
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         ConfigDiff diff = plugin.transaction(config, new Control());
@@ -321,8 +321,8 @@ public class TestMongodbInputPlugin
         previousLastRecord.put("datetime_field", "{$date=2015-01-27T10:23:49.000Z}");
         previousLastRecord.put("boolean_field", true);
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("id_field_name", "int32_field")
                 .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
                 .set("incremental_field", Optional.of(Arrays.asList("int32_field", "datetime_field", "boolean_field")))
@@ -330,8 +330,8 @@ public class TestMongodbInputPlugin
 
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         ConfigDiff diff = plugin.transaction(config, new Control());
@@ -346,13 +346,13 @@ public class TestMongodbInputPlugin
     public void testRunWithIncrementalLoadUnsupportedType() throws Exception
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("document_field")));
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         plugin.transaction(config, new Control());
@@ -362,14 +362,14 @@ public class TestMongodbInputPlugin
     public void testRunWithUnsupportedType() throws Exception
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("stop_on_invalid_record", true);
 
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
 
         List<Document> documents = new ArrayList<>();
         documents.add(
@@ -384,15 +384,15 @@ public class TestMongodbInputPlugin
     public void testRunWithAggregation() throws Exception
     {
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("id_field_name", "int32_field")
                 .set("aggregation", "{ $match: {\"int32_field\":{\"$gte\":5 },} }");
 
         PluginTask task = config.loadConfig(PluginTask.class);
 
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         plugin.transaction(config, new Control());
@@ -444,16 +444,16 @@ public class TestMongodbInputPlugin
     public void testBuildIncrementalCondition() throws Exception
     {
         PluginTask task = config().loadConfig(PluginTask.class);
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         Method method = MongodbInputPlugin.class.getDeclaredMethod("buildIncrementalCondition", PluginTask.class);
         method.setAccessible(true);
 
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
         task = config.loadConfig(PluginTask.class);
         Map<String, String> actual = (Map<String, String>) method.invoke(plugin, task);
@@ -471,8 +471,8 @@ public class TestMongodbInputPlugin
         innerRecord.put("$date", "2015-01-27T19:23:49Z");
         lastRecord.put("datetime_field", innerRecord);
         config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
                 .set("incremental_field", Optional.of(Arrays.asList("_id", "int32_field", "datetime_field")))
                 .set("last_record", Optional.of(lastRecord));
@@ -490,14 +490,14 @@ public class TestMongodbInputPlugin
         lastRecord.put("double_field", "0");
 
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
                 .set("incremental_field", Optional.of(Arrays.asList("double_field")))
                 .set("last_record", Optional.of(lastRecord));
         PluginTask task = config.loadConfig(PluginTask.class);
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
 
         Method method = MongodbInputPlugin.class.getDeclaredMethod("buildIncrementalCondition", PluginTask.class);
@@ -517,13 +517,13 @@ public class TestMongodbInputPlugin
         lastRecord.put("double_field", "0");
 
         ConfigSource config = Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION)
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("invalid_field")))
                 .set("last_record", Optional.of(lastRecord));
         PluginTask task = config.loadConfig(PluginTask.class);
-        dropCollection(task, MONGO_COLLECTION);
-        createCollection(task, MONGO_COLLECTION);
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
 
         Method method = MongodbInputPlugin.class.getDeclaredMethod("buildIncrementalCondition", PluginTask.class);
         method.setAccessible(true);
@@ -561,8 +561,8 @@ public class TestMongodbInputPlugin
     private ConfigSource config()
     {
         return Exec.newConfigSource()
-                .set("uri", MONGO_URI)
-                .set("collection", MONGO_COLLECTION);
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection);
     }
 
     private List<Document> createValidDocuments() throws Exception
