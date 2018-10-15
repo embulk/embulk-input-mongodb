@@ -3,14 +3,17 @@ language: java
 jdk:
   - oraclejdk8
 
+services:
+  - docker
+
 env:
   global:
     - MONGO_DATABASE=my_database
     - MONGO_COLLECTION=my_collection
     - MONGO_URI=mongodb://localhost:27017/my_database
+    - DOCKER_COMPOSE_VERSION=1.22.0
 
 sudo: required
-dist: precise
 
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
@@ -28,6 +31,10 @@ before_install:
   - sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts > /tmp/hosts
   - sudo mv /tmp/hosts /etc/hosts
   - cat /etc/hosts # optionally check the content *after*
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
 
 install:
   - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
@@ -41,6 +48,8 @@ install:
   - embulk --version
 
 before_script:
+  - docker-compose up -d
+  - docker-compose ps
   - echo "Wait mongodb wakeup"
   - sleep 15
   - mkdir -p ./tmp
