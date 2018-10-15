@@ -8,9 +8,9 @@ services:
 
 env:
   global:
-    - MONGO_DATABASE=my_database
+    - MONGO_DATABASE=mydb
     - MONGO_COLLECTION=my_collection
-    - MONGO_URI=mongodb://localhost:27017/my_database
+    - MONGO_URI=mongodb://localhost:27017/mydb
     - DOCKER_COMPOSE_VERSION=1.22.0
 
 sudo: required
@@ -37,28 +37,21 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
 
 install:
-  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-  - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
-  - sudo apt-get update
-  - sudo apt-get install -y --force-yes mongodb-org
-  - mongod -version
   - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.8.8.jar"
   - chmod +x ~/.embulk/bin/embulk
   - export PATH="$HOME/.embulk/bin:$PATH"
   - embulk --version
 
 before_script:
-  - docker-compose up -d
-  - docker-compose ps
-  - echo "Wait mongodb wakeup"
-  - sleep 15
   - mkdir -p ./tmp
   - date
+  - docker-compose up -d
+  - docker-compose ps
 
 script:
   - ./gradlew check
   - ./gradlew package
-  - mongoimport --host 127.0.0.1 --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
+  - mongoimport --host 127.0.0.1 -u mongo_user -p dbpass --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
   - |
     for target in basic full id_field_name
     do

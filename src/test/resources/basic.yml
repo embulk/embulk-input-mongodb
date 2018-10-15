@@ -1,6 +1,6 @@
 in:
   type: mongodb
-  uri: mongodb://localhost:27017/my_database
+  uri: mongodb://mongo_user:dbpass@localhost:27017/mydb
   collection: "my_collection"
   projection: '{ "_id": 0, "name": 1, "rank": 1 }'
   sort: '{ rank: 1 }'
