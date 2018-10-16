@@ -32,7 +32,11 @@ services:
     image: mongo:3.6
     depends_on:
     - mongodb
-    command: mongo --host mongodb -u admin -p tiger admin --eval "db.getSiblingDB('mydb').createUser({user:'mongo_user', pwd:'dbpass', roles:[{role:'readWrite',db:'mydb'}]});"
+    # Sleep to wait MongoDB wake up on Travis CI
+    command: >
+      /bin/bash -c
+      "sleep 15 &&
+      mongo --host mongodb -u admin -p tiger admin --eval \"db.getSiblingDB('mydb').createUser({user:'mongo_user', pwd:'dbpass', roles:[{role:'readWrite',db:'mydb'}]});\""
 volumes:
   mongodb-data:
     driver: local
