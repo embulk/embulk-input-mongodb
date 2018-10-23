@@ -296,16 +296,46 @@ public class MongodbInputPlugin
         }
 
         if (task.getUser().isPresent()) {
-            MongoCredential credential = MongoCredential.createCredential(
-                    task.getUser().get(),
-                    task.getDatabase().get(),
-                    task.getPassword().get().toCharArray()
-            );
-            return new MongoClient(addresses, Arrays.asList(credential));
+            return new MongoClient(addresses, Arrays.asList(createCredential(task)));
         }
         else {
             return new MongoClient(addresses);
         }
+    }
+
+    // @see http://mongodb.github.io/mongo-java-driver/3.0/driver-async/reference/connecting/authenticating/
+    private MongoCredential createCredential(PluginTask task)
+    {
+        MongoCredential credential;
+        String authSource = task.getAuthSource().isPresent() ? task.getAuthSource().get() : task.getDatabase().get();
+        AuthMethod authMethod = task.getAuthMethod().isPresent() ? task.getAuthMethod().get() : AuthMethod.AUTO;
+        switch (authMethod) {
+            case SCRAM_SHA_1:
+                credential = MongoCredential.createScramSha1Credential(
+                        task.getUser().get(),
+                        authSource,
+                        task.getPassword().get().toCharArray());
+                break;
+            case MONGODB_CR:
+                credential = MongoCredential.createMongoCRCredential(
+                        task.getUser().get(),
+                        authSource,
+                        task.getPassword().get().toCharArray());
+                break;
+            case AUTO:
+            default:
+                /* The client will negotiate the best mechanism based on the
+                 * version of the server that the client is authenticating to.
+                 * If the server version is 3.0 or higher, the driver will authenticate using the SCRAM-SHA-1 mechanism.
+                 * Otherwise, the driver will authenticate using the MONGODB_CR mechanism.
+                 */
+                credential = MongoCredential.createCredential(
+                        task.getUser().get(),
+                        authSource,
+                        task.getPassword().get().toCharArray()
+                );
+        }
+        return credential;
     }
 
     private Map<String, String> buildIncrementalCondition(PluginTask task)
