@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.mongodb.MongoClientURI;
+import com.mongodb.MongoCredential;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.BsonBinary;
@@ -169,6 +170,50 @@ public class TestMongodbInputPlugin
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
 
         plugin.transaction(config, new Control());
+    }
+
+    @Test
+    public void testCreateCredentialsSha1() throws Exception
+    {
+        PluginTask task = configForAuth().deepCopy()
+                .set("auth_method", "scram-sha-1")
+                .set("database", "db")
+                .loadConfig(PluginTask.class);
+
+        Method createCredential = MongodbInputPlugin.class.getDeclaredMethod("createCredential", PluginTask.class);
+        createCredential.setAccessible(true);
+        MongoCredential credential = (MongoCredential) createCredential.invoke(plugin, task);
+        assertThat("SCRAM-SHA-1", is(credential.getMechanism()));
+        assertThat("db", is(credential.getSource()));
+    }
+
+    @Test
+    public void testCreateCredentialsSha1WithAuthSource() throws Exception
+    {
+        PluginTask task = configForAuth().deepCopy()
+                .set("auth_method", "scram-sha-1")
+                .set("database", "db")
+                .set("auth_source", "authdb")
+                .loadConfig(PluginTask.class);
+
+        Method createCredential = MongodbInputPlugin.class.getDeclaredMethod("createCredential", PluginTask.class);
+        createCredential.setAccessible(true);
+        MongoCredential credential = (MongoCredential) createCredential.invoke(plugin, task);
+        assertThat("SCRAM-SHA-1", is(credential.getMechanism()));
+        assertThat("authdb", is(credential.getSource()));
+    }
+
+    @Test
+    public void testCreateCredentialsCr() throws Exception
+    {
+        PluginTask task = configForAuth().deepCopy()
+                .set("auth_method", "mongodb-cr")
+                .loadConfig(PluginTask.class);
+
+        Method createCredential = MongodbInputPlugin.class.getDeclaredMethod("createCredential", PluginTask.class);
+        createCredential.setAccessible(true);
+        MongoCredential credential = (MongoCredential) createCredential.invoke(plugin, task);
+        assertThat("MONGODB-CR", is(credential.getMechanism()));
     }
 
     @Test
@@ -563,6 +608,15 @@ public class TestMongodbInputPlugin
         return Exec.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection);
+    }
+
+    private ConfigSource configForAuth()
+    {
+        return Exec.newConfigSource()
+            .set("database", "db")
+            .set("collection", mongoCollection)
+            .set("user", "abcde")
+            .set("password", "passw0rd");
     }
 
     private List<Document> createValidDocuments() throws Exception
