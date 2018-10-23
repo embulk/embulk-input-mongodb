@@ -21,6 +21,8 @@ This plugin only works with embulk >= 0.8.8.
     - **uri**: [MongoDB connection string URI](http://docs.mongodb.org/manual/reference/connection-string/) (e.g. 'mongodb://localhost:27017/mydb') (string, required)
   - use separated URI parameters
     - **hosts**: list of hosts. `hosts` are pairs of host(string, required) and port(integer, optional, default: 27017)
+    - **auth_method**: Auth method. One of `scram-sha-1`, `mongodb-cr`, `auto` (string, optional, default: null)
+    - **auth_source**: Auth source. The database name where the user is defined (string, optional, default: null)
     - **user**: (string, optional)
     - **password**:  (string, optional)
     - **database**:  (string, required)
@@ -45,6 +47,37 @@ This plugin only works with embulk >= 0.8.8.
 - **json_column_name**: column name used in outputs (string, optional, default: "record")
 
 ## Example
+
+### Authentication
+
+#### Use separated URI prameters
+
+```yaml
+in:
+  type: mongodb
+  hosts:
+  - {host: localhost, port:27017}
+  user:  myuser
+  password: mypassword
+  database: my_database
+  auth_method: scram-sha-1
+  auth_source: auth_db
+  collection: "my_collection
+```
+
+If you set `auth_method: auto`, The client will negotiate the best mechanism based on the version of the server that the client is authenticating to.
+
+If the server version is 3.0 or higher, the driver will authenticate using the SCRAM-SHA-1 mechanism.
+
+Otherwise, the driver will authenticate using the MONGODB_CR mechanism. 
+
+#### Use URI String
+
+```yaml
+in:
+  type: mongodb
+  uri: mongodb://myuser:mypassword@localhost:27017/my_database?authMechanism=SCRAM-SHA-1&authSource=another_database
+```
 
 ### Exporting all objects
 
