@@ -222,7 +222,7 @@ $ ./gradlew gem
 ## Test
 
 Firstly install Docker and Docker compose then `docker-compose up -d`,
-so that an FTP server will be locally launched then you can run tests with `./gradlew test`.
+so that an MongoDB server will be locally launched then you can run tests with `./gradlew test`.
 
 ```sh
 $ docker-compose up -d
