@@ -25,6 +25,14 @@ public interface PluginTask
     @ConfigDefault("null")
     Optional<List<HostTask>> getHosts();
 
+    @Config("auth_method")
+    @ConfigDefault("null")
+    Optional<AuthMethod> getAuthMethod();
+
+    @Config("auth_source")
+    @ConfigDefault("null")
+    Optional<String> getAuthSource();
+
     @Config("user")
     @ConfigDefault("null")
     Optional<String> getUser();
