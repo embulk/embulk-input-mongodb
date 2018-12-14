@@ -3,14 +3,17 @@ language: java
 jdk:
   - oraclejdk8
 
+services:
+  - docker
+
 env:
   global:
-    - MONGO_DATABASE=my_database
+    - MONGO_DATABASE=mydb
     - MONGO_COLLECTION=my_collection
-    - MONGO_URI=mongodb://localhost:27017/my_database
+    - MONGO_URI=mongodb://localhost:27017/mydb
+    - DOCKER_COMPOSE_VERSION=1.22.0
 
 sudo: required
-dist: precise
 
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
@@ -20,36 +23,28 @@ cache:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
 
-# Work around fix for buffer overflow error on OpenJDK7
-# ref: https://github.com/travis-ci/travis-ci/issues/5227#issuecomment-165131913
 before_install:
-  - cat /etc/hosts # optionally check the content *before*
-  - sudo hostname "$(hostname | cut -c1-63)"
-  - sed -e "s/^\\(127\\.0\\.0\\.1.*\\)/\\1 $(hostname | cut -c1-63)/" /etc/hosts > /tmp/hosts
-  - sudo mv /tmp/hosts /etc/hosts
-  - cat /etc/hosts # optionally check the content *after*
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
 
 install:
-  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-  - echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
-  - sudo apt-get update
-  - sudo apt-get install -y --force-yes mongodb-org
-  - mongod -version
   - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.8.8.jar"
   - chmod +x ~/.embulk/bin/embulk
   - export PATH="$HOME/.embulk/bin:$PATH"
   - embulk --version
 
 before_script:
-  - echo "Wait mongodb wakeup"
-  - sleep 15
   - mkdir -p ./tmp
   - date
+  - docker-compose up -d
+  - docker-compose ps
 
 script:
   - ./gradlew check
   - ./gradlew package
-  - mongoimport --host 127.0.0.1 --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
+  - mongoimport --host 127.0.0.1 -u mongo_user -p dbpass --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
   - |
     for target in basic full id_field_name
     do

@@ -1,6 +1,6 @@
 in:
   type: mongodb
-  uri: mongodb://localhost:27017/my_database
+  uri: mongodb://mongo_user:dbpass@localhost:27017/mydb
   collection: "my_collection"
   json_column_name: "json"
   query: '{ rank: { $gte: 3 } }'

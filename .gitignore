@@ -1,4 +1,6 @@
 *~
+/db/
+/out/
 /pkg/
 /tmp/
 *.gemspec
