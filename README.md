@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/hakobera/embulk-input-mongodb.svg)](https://travis-ci.org/hakobera/embulk-input-mongodb)
 
 MongoDB input plugin for Embulk loads records from MongoDB.
-This plugin loads documents as single-column records (column name is "record"). You can use filter plugins such as [embulk-filter-expand_json](https://github.com/civitaspo/embulk-filter-expand_json) or [embulk-filter-add_time](https://github.com/treasure-data/embulk-filter-add_time) to convert the json column to typed columns. [Rename filter](http://www.embulk.org/docs/built-in.html#rename-filter-plugin) is also useful to rename the typed columns.
+This plugin loads documents as single-column records (column name is "record"). You can use filter plugins such as [embulk-filter-expand_json](https://github.com/civitaspo/embulk-filter-expand_json) or [embulk-filter-add_time](https://github.com/treasure-data/embulk-filter-add_time) to convert the json column to typed columns. [Rename filter](https://www.embulk.org/docs/built-in.html#rename-filter-plugin) is also useful to rename the typed columns.
 
 ## Overview
 
@@ -18,7 +18,7 @@ This plugin only works with embulk >= 0.8.8.
   One of them is required.
   
   - use MongoDB connection string URI
-    - **uri**: [MongoDB connection string URI](http://docs.mongodb.org/manual/reference/connection-string/) (e.g. 'mongodb://localhost:27017/mydb') (string, required)
+    - **uri**: [MongoDB connection string URI](https://docs.mongodb.org/manual/reference/connection-string/) (e.g. 'mongodb://localhost:27017/mydb') (string, required)
   - use separated URI parameters
     - **hosts**: list of hosts. `hosts` are pairs of host(string, required) and port(integer, optional, default: 27017)
     - **auth_method**: Auth method. One of `scram-sha-1`, `mongodb-cr`, `auto` (string, optional, default: null)
@@ -40,7 +40,7 @@ This plugin only works with embulk >= 0.8.8.
 - **projection**: A JSON document used for [projection](https://docs.mongodb.com/manual/reference/operator/projection/positional/) on query results. Fields in a document are used only if they match with this condition. (string, optional)
 - **sort**: Ordering of results (string, optional)
 - **aggregation**: Aggregation query (string, optional) See [Aggregation query](#aggregation-query) for more detail.
-- **batch_size**: Limits the number of objects returned in one [batch](http://api.mongodb.com/java/current/com/mongodb/DBCursor.html#batchSize-int-) (integer, optional, default: 10000)
+- **batch_size**: Limits the number of objects returned in one [batch](https://mongodb.github.io/mongo-java-driver/3.8/javadoc/com/mongodb/DBCursor.html#batchSize-int-) (integer, optional, default: 10000)
 - **incremental_field** List of field name (list, optional, can't use with sort option)
 - **last_record** Last loaded record for incremental load (hash, optional)
 - **stop_on_invalid_record** Stop bulk load transaction if a document includes invalid record (such as unsupported object type) (boolean, optional, default: false)
