@@ -1,7 +1,6 @@
 package org.embulk.input.mongodb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Throwables;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -179,7 +178,10 @@ public class MongodbInputPlugin
                     pageBuilder.addRecord();
                 }
             } catch (MongoException ex) {
-                Throwables.propagate(ex);
+                if (ex instanceof RuntimeException) {
+                    throw ex;
+                }
+                throw new RuntimeException(ex);
             }
         }
         else {
@@ -196,7 +198,10 @@ public class MongodbInputPlugin
                     pageBuilder.addRecord();
                 }
             } catch (MongoException ex) {
-                Throwables.propagate(ex);
+                if (ex instanceof RuntimeException) {
+                    throw ex;
+                }
+                throw new RuntimeException(ex);
             }
         }
 
