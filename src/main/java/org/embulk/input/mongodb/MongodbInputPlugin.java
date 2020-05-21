@@ -35,6 +35,7 @@ import org.embulk.spi.Schema;
 import org.embulk.spi.type.Types;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -48,7 +49,7 @@ import java.util.Map;
 public class MongodbInputPlugin
         implements InputPlugin
 {
-    private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
+    private final Logger log = LoggerFactory.getLogger(MongodbInputPlugin.class);
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
