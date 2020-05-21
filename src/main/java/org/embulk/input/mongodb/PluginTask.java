@@ -102,7 +102,4 @@ public interface PluginTask
     @Config("last_record")
     @ConfigDefault("null")
     Optional<Map<String, Object>> getLastRecord();
-
-    @ConfigInject
-    BufferAllocator getBufferAllocator();
 }

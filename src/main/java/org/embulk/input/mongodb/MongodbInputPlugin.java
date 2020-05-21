@@ -134,7 +134,7 @@ public class MongodbInputPlugin
             PageOutput output)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        BufferAllocator allocator = task.getBufferAllocator();
+        BufferAllocator allocator = Exec.getBufferAllocator();
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
         final Column column = pageBuilder.getSchema().getColumns().get(0);
 
