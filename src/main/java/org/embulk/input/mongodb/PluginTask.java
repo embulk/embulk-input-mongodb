@@ -1,6 +1,5 @@
 package org.embulk.input.mongodb;
 
-import com.google.common.base.Optional;
 import org.embulk.config.Config;
 import org.embulk.config.ConfigDefault;
 import org.embulk.config.ConfigInject;
@@ -12,6 +11,7 @@ import javax.validation.constraints.Min;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public interface PluginTask
         extends Task

@@ -1,7 +1,6 @@
 package org.embulk.input.mongodb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
@@ -45,6 +44,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class MongodbInputPlugin
         implements InputPlugin
@@ -188,8 +188,8 @@ public class MongodbInputPlugin
                     .projection(projection)
                     .sort(sort)
                     .batchSize(task.getBatchSize())
-                    .limit(task.getLimit().or(0))
-                    .skip(task.getSkip().or(0))
+                    .limit(task.getLimit().orElse(0))
+                    .skip(task.getSkip().orElse(0))
                     .iterator()) {
                 while (cursor.hasNext()) {
                     pageBuilder.setJson(column, cursor.next());
