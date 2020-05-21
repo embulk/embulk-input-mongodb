@@ -123,7 +123,7 @@ public class MongodbInputPlugin
     @Override
     public void cleanup(TaskSource taskSource,
             Schema schema, int taskCount,
-            List<TaskReport> successCommitReports)
+            List<TaskReport> successTaskReports)
     {
         // do nothing
     }
