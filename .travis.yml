@@ -43,12 +43,12 @@ before_script:
 
 script:
   - ./gradlew check
-  - ./gradlew package
+  - ./gradlew gem
   - mongoimport --host 127.0.0.1 -u mongo_user -p dbpass --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
   - |
     for target in basic full id_field_name
     do
-      embulk run -L . src/test/resources/${target}.yml
+      embulk run -L build/gemContents src/test/resources/${target}.yml
       cat tmp/${target}000.00.csv
       cmp tmp/${target}000.00.csv src/test/resources/${target}_expected.csv
     done
