@@ -30,7 +30,7 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
 
 install:
-  - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.8.8.jar"
+  - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.9.23.jar"
   - chmod +x ~/.embulk/bin/embulk
   - export PATH="$HOME/.embulk/bin:$PATH"
   - embulk --version
