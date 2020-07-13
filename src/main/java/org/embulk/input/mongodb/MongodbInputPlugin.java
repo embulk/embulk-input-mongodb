@@ -1,8 +1,6 @@
 package org.embulk.input.mongodb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Optional;
-import com.google.common.base.Throwables;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -35,6 +33,7 @@ import org.embulk.spi.Schema;
 import org.embulk.spi.type.Types;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -44,11 +43,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class MongodbInputPlugin
         implements InputPlugin
 {
-    private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
+    private final Logger log = LoggerFactory.getLogger(MongodbInputPlugin.class);
 
     @Override
     public ConfigDiff transaction(ConfigSource config,
@@ -123,7 +123,7 @@ public class MongodbInputPlugin
     @Override
     public void cleanup(TaskSource taskSource,
             Schema schema, int taskCount,
-            List<TaskReport> successCommitReports)
+            List<TaskReport> successTaskReports)
     {
         // do nothing
     }
@@ -134,7 +134,7 @@ public class MongodbInputPlugin
             PageOutput output)
     {
         PluginTask task = taskSource.loadTask(PluginTask.class);
-        BufferAllocator allocator = task.getBufferAllocator();
+        BufferAllocator allocator = Exec.getBufferAllocator();
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
         final Column column = pageBuilder.getSchema().getColumns().get(0);
 
@@ -178,7 +178,10 @@ public class MongodbInputPlugin
                     pageBuilder.addRecord();
                 }
             } catch (MongoException ex) {
-                Throwables.propagate(ex);
+                if (ex instanceof RuntimeException) {
+                    throw ex;
+                }
+                throw new RuntimeException(ex);
             }
         }
         else {
@@ -187,15 +190,18 @@ public class MongodbInputPlugin
                     .projection(projection)
                     .sort(sort)
                     .batchSize(task.getBatchSize())
-                    .limit(task.getLimit().or(0))
-                    .skip(task.getSkip().or(0))
+                    .limit(task.getLimit().orElse(0))
+                    .skip(task.getSkip().orElse(0))
                     .iterator()) {
                 while (cursor.hasNext()) {
                     pageBuilder.setJson(column, cursor.next());
                     pageBuilder.addRecord();
                 }
             } catch (MongoException ex) {
-                Throwables.propagate(ex);
+                if (ex instanceof RuntimeException) {
+                    throw ex;
+                }
+                throw new RuntimeException(ex);
             }
         }
 

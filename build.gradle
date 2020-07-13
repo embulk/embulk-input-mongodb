@@ -1,11 +1,12 @@
 plugins {
-    id "com.jfrog.bintray" version "1.1"
-    id "com.github.jruby-gradle.base" version "0.1.5"
+    id "com.jfrog.bintray" version "1.8.4"
     id "java"
+    id "maven-publish"
     id "checkstyle"
     id "jacoco"
+    id "org.embulk.embulk-plugins" version "0.4.1"
 }
-import com.github.jrubygradle.JRubyExec
+
 repositories {
     mavenCentral()
     jcenter()
@@ -13,31 +14,61 @@ repositories {
         url "https://oss.sonatype.org/content/repositories/releases/"
     }
 }
-configurations {
-    provided
-}
 
+// TODO: Configure group = ""
 version = "0.7.0"
+description = "Loads records from Mongodb."
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 dependencies {
-    compile  "org.embulk:embulk-core:0.8.8"
-    provided "org.embulk:embulk-core:0.8.8"
+    compileOnly "org.embulk:embulk-core:0.9.23"
     compile "org.mongodb:mongo-java-driver:3.8.1"
 
-    testCompile "junit:junit:4.+"
-    testCompile "org.embulk:embulk-core:0.8.8:tests"
-    testCompile "org.embulk:embulk-standards:0.8.8"
+    testCompile "junit:junit:4.13"
+    testCompile "org.embulk:embulk-core:0.9.23:tests"
+    testCompile "org.embulk:embulk-standards:0.9.23"
+    testCompile "org.embulk:embulk-deps-buffer:0.9.23"
+    testCompile "org.embulk:embulk-deps-config:0.9.23"
 }
 
-task classpath(type: Copy, dependsOn: ["jar"]) {
-    doFirst { file("classpath").deleteDir() }
-    from (configurations.runtime - configurations.provided + files(jar.archivePath))
-    into "classpath"
+embulkPlugin {
+    mainClass = "org.embulk.input.mongodb.MongodbInputPlugin"
+    category = "input"
+    type = "mongodb"
 }
-clean { delete "classpath" }
+
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationTo???Repository".
+            from components.java  // Must be "components.java". The dependency modification works only for it.
+        }
+    }
+    // TODO: Add "repositories" section to publish this plugin into a Maven repository.
+}
+
+gem {
+    authors = [ "Kazuyuki Honda" ]
+    email = [ "hakobera@gmail.com" ]
+    summary = "Mongodb input plugin for Embulk"
+    homepage = "https://github.com/hakobera/embulk-input-mongodb"
+    licenses = [ "MIT" ]
+}
+
+gemPush {
+    host = "https://rubygems.org"
+    outputs.upToDateWhen { false }
+}
 
 checkstyle {
     configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
@@ -55,45 +86,3 @@ task checkstyle(type: Checkstyle) {
     classpath = sourceSets.main.output + sourceSets.test.output
     source = sourceSets.main.allJava + sourceSets.test.allJava
 }
-
-task gem(type: JRubyExec, dependsOn: ["gemspec", "classpath"]) {
-    jrubyArgs "-rrubygems/gem_runner", "-eGem::GemRunner.new.run(ARGV)", "build"
-    script "${project.name}.gemspec"
-    doLast { ant.move(file: "${project.name}-${project.version}.gem", todir: "pkg") }
-}
-
-task gemPush(type: JRubyExec, dependsOn: ["gem"]) {
-    jrubyArgs "-rrubygems/gem_runner", "-eGem::GemRunner.new.run(ARGV)", "push"
-    script "pkg/${project.name}-${project.version}.gem"
-}
-
-task "package"(dependsOn: ["gemspec", "classpath"]) << {
-    println "> Build succeeded."
-    println "> You can run embulk with '-L ${file(".").absolutePath}' argument."
-}
-
-task gemspec {
-    ext.gemspecFile = file("${project.name}.gemspec")
-    inputs.file "build.gradle"
-    outputs.file gemspecFile
-    doLast { gemspecFile.write($/
-Gem::Specification.new do |spec|
-  spec.name          = "${project.name}"
-  spec.version       = "${project.version}"
-  spec.authors       = ["Kazuyuki Honda"]
-  spec.summary       = %[Mongodb input plugin for Embulk]
-  spec.description   = %[Loads records from Mongodb.]
-  spec.email         = ["hakobera@gmail.com"]
-  spec.licenses      = ["MIT"]
-  spec.homepage      = "https://github.com/hakobera/embulk-input-mongodb"
-  spec.files         = `git ls-files`.split("\n") + Dir["classpath/*.jar"]
-  spec.test_files    = spec.files.grep(%r"^(test|spec)/")
-  spec.require_paths = ["lib"]
-
-  spec.add_development_dependency 'bundler', ['~> 1.0']
-  spec.add_development_dependency 'rake', ['>= 10.0']
-end
-/$)
-    }
-}
-clean { delete "${project.name}.gemspec" }
