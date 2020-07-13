@@ -56,13 +56,13 @@ This plugin only works with embulk >= 0.8.8.
 in:
   type: mongodb
   hosts:
-  - {host: localhost, port:27017}
+  - {host: localhost, port: 27017}
   user:  myuser
   password: mypassword
   database: my_database
   auth_method: scram-sha-1
   auth_source: auth_db
-  collection: "my_collection
+  collection: "my_collection"
 ```
 
 If you set `auth_method: auto`, The client will negotiate the best mechanism based on the version of the server that the client is authenticating to.
