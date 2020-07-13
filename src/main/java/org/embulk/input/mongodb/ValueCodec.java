@@ -1,6 +1,5 @@
 package org.embulk.input.mongodb;
 
-import com.google.common.base.Optional;
 import org.bson.BsonReader;
 import org.bson.BsonType;
 import org.bson.BsonWriter;
@@ -8,9 +7,9 @@ import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
 import org.embulk.spi.DataException;
-import org.embulk.spi.Exec;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -19,6 +18,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TimeZone;
 import static org.msgpack.value.ValueFactory.newArray;
 import static org.msgpack.value.ValueFactory.newBinary;
@@ -32,7 +32,7 @@ import static org.msgpack.value.ValueFactory.newString;
 public class ValueCodec implements Codec<Value>
 {
     private final SimpleDateFormat formatter;
-    private final Logger log = Exec.getLogger(MongodbInputPlugin.class);
+    private final Logger log = LoggerFactory.getLogger(MongodbInputPlugin.class);
     private final boolean stopOnInvalidRecord;
     private final PluginTask task;
     private final Optional<List<String>> incrementalField;

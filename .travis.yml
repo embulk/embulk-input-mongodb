@@ -1,7 +1,7 @@
 language: java
 
 jdk:
-  - oraclejdk8
+  - openjdk8
 
 services:
   - docker
@@ -30,7 +30,7 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
 
 install:
-  - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.8.8.jar"
+  - curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.bintray.com/embulk/maven/embulk-0.9.23.jar"
   - chmod +x ~/.embulk/bin/embulk
   - export PATH="$HOME/.embulk/bin:$PATH"
   - embulk --version
@@ -43,12 +43,12 @@ before_script:
 
 script:
   - ./gradlew check
-  - ./gradlew package
+  - ./gradlew gem
   - mongoimport --host 127.0.0.1 -u mongo_user -p dbpass --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
   - |
     for target in basic full id_field_name
     do
-      embulk run -L . src/test/resources/${target}.yml
+      embulk run -L build/gemContents src/test/resources/${target}.yml
       cat tmp/${target}000.00.csv
       cmp tmp/${target}000.00.csv src/test/resources/${target}_expected.csv
     done

@@ -2,7 +2,6 @@ package org.embulk.input.mongodb;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -45,6 +44,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TimeZone;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -84,12 +84,12 @@ public class TestMongodbInputPlugin
         PluginTask task = config.loadConfig(PluginTask.class);
         assertEquals("{}", task.getQuery());
         assertEquals("{}", task.getSort());
-        assertEquals(Optional.<Integer>absent(), task.getLimit());
-        assertEquals(Optional.<Integer>absent(), task.getSkip());
+        assertEquals(Optional.<Integer>empty(), task.getLimit());
+        assertEquals(Optional.<Integer>empty(), task.getSkip());
         assertEquals((long) 10000, (long) task.getBatchSize());
         assertEquals("record", task.getJsonColumnName());
-        assertEquals(Optional.absent(), task.getIncrementalField());
-        assertEquals(Optional.absent(), task.getLastRecord());
+        assertEquals(Optional.empty(), task.getIncrementalField());
+        assertEquals(Optional.empty(), task.getLastRecord());
     }
 
     @Test(expected = ConfigException.class)
