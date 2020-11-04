@@ -1,8 +1,8 @@
 package org.embulk.input.mongodb;
 
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
-import org.embulk.config.Task;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
+import org.embulk.util.config.Task;
 
 public interface HostTask
         extends Task

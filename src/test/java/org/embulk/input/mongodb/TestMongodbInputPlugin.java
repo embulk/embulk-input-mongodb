@@ -29,7 +29,7 @@ import org.embulk.spi.InputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TestPageBuilderReader.MockPageOutput;
 import org.embulk.spi.type.Types;
-import org.embulk.spi.util.Pages;
+import org.embulk.util.config.ConfigMapperFactory;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -53,6 +53,8 @@ import static org.junit.Assert.assertThat;
 
 public class TestMongodbInputPlugin
 {
+    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
+
     private final String mongoUri = "mongodb://mongo_user:dbpass@localhost:27017/mydb";
     private final String mongoCollection = "my_collection";
 
@@ -77,11 +79,11 @@ public class TestMongodbInputPlugin
     @Test
     public void checkDefaultValues()
     {
-        ConfigSource config = Exec.newConfigSource()
+        final ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection);
 
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         assertEquals("{}", task.getQuery());
         assertEquals("{}", task.getSort());
         assertEquals(Optional.<Integer>empty(), task.getLimit());
@@ -95,7 +97,7 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void checkDefaultValuesUriIsNull()
     {
-        ConfigSource config = Exec.newConfigSource()
+        final ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", null)
                 .set("collection", mongoCollection);
 
@@ -105,7 +107,7 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void checkDefaultValuesInvalidUri()
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", "mongodb://mongouser:password@non-exists.example.com:23490/test")
                 .set("collection", mongoCollection);
 
@@ -115,7 +117,7 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void checkDefaultValuesCollectionIsNull()
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", null);
 
@@ -125,7 +127,7 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void checkSortCannotUseWithIncremental()
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("sort", "{ \"field1\": 1 }")
@@ -137,7 +139,7 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void checkSkipCannotUseWithIncremental()
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("skip", 10)
@@ -149,7 +151,7 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void checkInvalidQueryOption()
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("query", "{\"key\":invalid_value}")
@@ -162,7 +164,7 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void checkAggregationWithOtherOption()
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("query", "{\"key\":\"valid_value\"}")
@@ -175,10 +177,11 @@ public class TestMongodbInputPlugin
     @Test
     public void testCreateCredentialsSha1() throws Exception
     {
-        PluginTask task = configForAuth().deepCopy()
-                .set("auth_method", "scram-sha-1")
-                .set("database", "db")
-                .loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
+                configForAuth().deepCopy()
+                        .set("auth_method", "scram-sha-1")
+                        .set("database", "db"),
+                PluginTask.class);
 
         Method createCredential = MongodbInputPlugin.class.getDeclaredMethod("createCredential", PluginTask.class);
         createCredential.setAccessible(true);
@@ -190,11 +193,12 @@ public class TestMongodbInputPlugin
     @Test
     public void testCreateCredentialsSha1WithAuthSource() throws Exception
     {
-        PluginTask task = configForAuth().deepCopy()
-                .set("auth_method", "scram-sha-1")
-                .set("database", "db")
-                .set("auth_source", "authdb")
-                .loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
+                configForAuth().deepCopy()
+                        .set("auth_method", "scram-sha-1")
+                        .set("database", "db")
+                        .set("auth_source", "authdb"),
+                PluginTask.class);
 
         Method createCredential = MongodbInputPlugin.class.getDeclaredMethod("createCredential", PluginTask.class);
         createCredential.setAccessible(true);
@@ -206,9 +210,10 @@ public class TestMongodbInputPlugin
     @Test
     public void testCreateCredentialsCr() throws Exception
     {
-        PluginTask task = configForAuth().deepCopy()
-                .set("auth_method", "mongodb-cr")
-                .loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
+                configForAuth().deepCopy()
+                        .set("auth_method", "mongodb-cr"),
+                PluginTask.class);
 
         Method createCredential = MongodbInputPlugin.class.getDeclaredMethod("createCredential", PluginTask.class);
         createCredential.setAccessible(true);
@@ -219,7 +224,7 @@ public class TestMongodbInputPlugin
     @Test
     public void testResume()
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         final Schema schema = getFieldSchema();
         plugin.resume(task.dump(), schema, 0, new InputPlugin.Control() {
             @Override
@@ -234,7 +239,7 @@ public class TestMongodbInputPlugin
     @Test
     public void testCleanup()
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         Schema schema = getFieldSchema();
         plugin.cleanup(task.dump(), schema, 0, Lists.<TaskReport>newArrayList()); // no errors happens
     }
@@ -248,7 +253,7 @@ public class TestMongodbInputPlugin
     @Test
     public void testRun() throws Exception
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -261,11 +266,11 @@ public class TestMongodbInputPlugin
     @Test
     public void testRunWithLimit() throws Exception
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("limit", 1);
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -278,12 +283,12 @@ public class TestMongodbInputPlugin
     @Test
     public void testRunWithLimitSkip() throws Exception
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("limit", 3)
                 .set("skip", 1);
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -299,13 +304,13 @@ public class TestMongodbInputPlugin
         MongoClientURI uri = new MongoClientURI(mongoUri);
         String host = uri.getHosts().get(0);
         Integer port = (host.split(":")[1] != null) ? Integer.valueOf(host.split(":")[1]) : 27017;
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("hosts", Arrays.asList(ImmutableMap.of("host", host.split(":")[0], "port", port)))
                 .set("user", uri.getUsername())
                 .set("password", uri.getPassword())
                 .set("database", uri.getDatabase())
                 .set("collection", mongoCollection);
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -318,11 +323,11 @@ public class TestMongodbInputPlugin
     @Test
     public void testRunWithIncrementalLoad() throws Exception
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("int32_field")));
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -337,13 +342,13 @@ public class TestMongodbInputPlugin
     @Test
     public void testRunWithLimitIncrementalLoad() throws Exception
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("id_field_name", "int32_field")
                 .set("incremental_field", Optional.of(Arrays.asList("int32_field", "double_field", "datetime_field", "boolean_field")))
                 .set("limit", 1);
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -365,7 +370,7 @@ public class TestMongodbInputPlugin
         previousLastRecord.put("int32_field", 1);
         previousLastRecord.put("datetime_field", "{$date=2015-01-27T10:23:49.000Z}");
         previousLastRecord.put("boolean_field", true);
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("id_field_name", "int32_field")
@@ -373,7 +378,7 @@ public class TestMongodbInputPlugin
                 .set("incremental_field", Optional.of(Arrays.asList("int32_field", "datetime_field", "boolean_field")))
                 .set("last_record", previousLastRecord);
 
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -390,11 +395,11 @@ public class TestMongodbInputPlugin
     @Test(expected = ConfigException.class)
     public void testRunWithIncrementalLoadUnsupportedType() throws Exception
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("document_field")));
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -406,12 +411,12 @@ public class TestMongodbInputPlugin
     @Test(expected = ValueCodec.UnknownTypeFoundException.class)
     public void testRunWithUnsupportedType() throws Exception
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("stop_on_invalid_record", true);
 
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -428,13 +433,13 @@ public class TestMongodbInputPlugin
     @Test
     public void testRunWithAggregation() throws Exception
     {
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("id_field_name", "int32_field")
                 .set("aggregation", "{ $match: {\"int32_field\":{\"$gte\":5 },} }");
 
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
@@ -447,7 +452,7 @@ public class TestMongodbInputPlugin
     @Test
     public void testNormalize() throws Exception
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         ValueCodec codec = new ValueCodec(true, task);
 
         Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class);
@@ -461,7 +466,7 @@ public class TestMongodbInputPlugin
     {
         ConfigSource config = config().set("id_field_name", "object_id");
 
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         ValueCodec codec = new ValueCodec(true, task);
 
         Method normalize = ValueCodec.class.getDeclaredMethod("normalize", String.class);
@@ -488,7 +493,7 @@ public class TestMongodbInputPlugin
     @SuppressWarnings("unchecked")
     public void testBuildIncrementalCondition() throws Exception
     {
-        PluginTask task = config().loadConfig(PluginTask.class);
+        PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
@@ -496,11 +501,11 @@ public class TestMongodbInputPlugin
         Method method = MongodbInputPlugin.class.getDeclaredMethod("buildIncrementalCondition", PluginTask.class);
         method.setAccessible(true);
 
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("account")));
-        task = config.loadConfig(PluginTask.class);
+        task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         Map<String, String> actual = (Map<String, String>) method.invoke(plugin, task);
         Map<String, String> expected = new HashMap<>();
         expected.put("query", "{}");
@@ -515,13 +520,13 @@ public class TestMongodbInputPlugin
         innerRecord = new HashMap<>();
         innerRecord.put("$date", "2015-01-27T19:23:49Z");
         lastRecord.put("datetime_field", innerRecord);
-        config = Exec.newConfigSource()
+        config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
                 .set("incremental_field", Optional.of(Arrays.asList("_id", "int32_field", "datetime_field")))
                 .set("last_record", Optional.of(lastRecord));
-        task = config.loadConfig(PluginTask.class);
+        task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         actual = (Map<String, String>) method.invoke(plugin, task);
         expected.put("query", "{\"double_field\":{\"$gte\":1.23},\"int32_field\":{\"$gt\":15000},\"_id\":{\"$gt\":{\"$oid\":\"abc\"}},\"datetime_field\":{\"$gt\":{\"$date\":\"2015-01-27T19:23:49Z\"}}}");
         expected.put("sort", "{\"_id\":1,\"int32_field\":1,\"datetime_field\":1}");
@@ -534,13 +539,13 @@ public class TestMongodbInputPlugin
         Map<String, Object> lastRecord = new HashMap<>();
         lastRecord.put("double_field", "0");
 
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("query", "{\"double_field\":{\"$gte\": 1.23}}")
                 .set("incremental_field", Optional.of(Arrays.asList("double_field")))
                 .set("last_record", Optional.of(lastRecord));
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
         insertDocument(task, createValidDocuments());
@@ -561,12 +566,12 @@ public class TestMongodbInputPlugin
         Map<String, Object> lastRecord = new HashMap<>();
         lastRecord.put("double_field", "0");
 
-        ConfigSource config = Exec.newConfigSource()
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("incremental_field", Optional.of(Arrays.asList("invalid_field")))
                 .set("last_record", Optional.of(lastRecord));
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         dropCollection(task, mongoCollection);
         createCollection(task, mongoCollection);
 
@@ -584,7 +589,7 @@ public class TestMongodbInputPlugin
     {
         ImmutableList.Builder<TaskReport> reports = new ImmutableList.Builder<>();
         for (int i = 0; i < taskCount; i++) {
-            reports.add(Exec.newTaskReport());
+            reports.add(CONFIG_MAPPER_FACTORY.newTaskReport());
         }
         return reports.build();
     }
@@ -605,14 +610,14 @@ public class TestMongodbInputPlugin
 
     private ConfigSource config()
     {
-        return Exec.newConfigSource()
+        return CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection);
     }
 
     private ConfigSource configForAuth()
     {
-        return Exec.newConfigSource()
+        return CONFIG_MAPPER_FACTORY.newConfigSource()
             .set("database", "db")
             .set("collection", mongoCollection)
             .set("user", "abcde")
