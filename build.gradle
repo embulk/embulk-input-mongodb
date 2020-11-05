@@ -15,8 +15,8 @@ repositories {
     }
 }
 
-// TODO: Configure group = ""
-version = "0.7.0"
+group = "org.embulk"
+version = "0.8.0-SNAPSHOT"
 description = "Loads records from Mongodb."
 
 sourceCompatibility = 1.8
