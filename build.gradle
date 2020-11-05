@@ -1,18 +1,14 @@
 plugins {
-    id "com.jfrog.bintray" version "1.8.4"
     id "java"
     id "maven-publish"
+    id "signing"
     id "checkstyle"
-    id "jacoco"
     id "org.embulk.embulk-plugins" version "0.4.2"
 }
 
 repositories {
     mavenCentral()
     jcenter()
-    maven {
-        url "https://oss.sonatype.org/content/repositories/releases/"
-    }
 }
 
 group = "org.embulk"
@@ -24,11 +20,7 @@ targetCompatibility = 1.8
 
 tasks.withType(JavaCompile) {
     options.compilerArgs << "-Xlint:deprecation" << "-Xlint:unchecked"
-}
-
-java {
-    withJavadocJar()
-    withSourcesJar()
+    options.encoding = "UTF-8"
 }
 
 dependencies {
@@ -61,6 +53,30 @@ dependencies {
     testCompile "org.embulk:embulk-deps:0.10.19"
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+test {
+    testLogging {
+        outputs.upToDateWhen { false }
+        showStandardStreams = true
+    }
+}
+
+jar {
+    from rootProject.file("LICENSE.txt")
+}
+
+sourcesJar {
+    from rootProject.file("LICENSE.txt")
+}
+
+javadocJar {
+    from rootProject.file("LICENSE.txt")
+}
+
 embulkPlugin {
     mainClass = "org.embulk.input.mongodb.MongodbInputPlugin"
     category = "input"
@@ -69,18 +85,67 @@ embulkPlugin {
 
 publishing {
     publications {
-        embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationTo???Repository".
+        maven(MavenPublication) {  // Publish it with "publishMavenPublicationToMavenCentralRepository".
             from components.java  // Must be "components.java". The dependency modification works only for it.
+
+            pom {  // https://central.sonatype.org/pages/requirements.html
+                packaging "jar"
+                url = "https://www.embulk.org/"
+
+                licenses {
+                    license {
+                        // http://central.sonatype.org/pages/requirements.html#license-information
+                        name = "MIT License"
+                        url = "http://www.opensource.org/licenses/mit-license.php"
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = "Kazuyuki Honda"
+                        email = "hakobera@gmail.com"
+                    }
+                    developer {
+                        name = "Dai MIKURUBE"
+                        email = "dmikurube@treasure-data.com"
+                    }
+                }
+
+                scm {
+                    connection = "scm:git:git://github.com/embulk/embulk-input-mongodb.git"
+                    developerConnection = "scm:git:git@github.com:embulk/embulk-input-mongodb.git"
+                    url = "https://github.com/embulk/embulk-input-mongodb"
+                }
+            }
         }
     }
-    // TODO: Add "repositories" section to publish this plugin into a Maven repository.
+
+    repositories {
+        maven {  // publishMavenPublicationToMavenCentralRepository
+            name = "mavenCentral"
+            if (project.version.endsWith("-SNAPSHOT")) {
+                url "https://oss.sonatype.org/content/repositories/snapshots"
+            } else {
+                url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+            }
+
+            credentials {
+                username = project.hasProperty("ossrhUsername") ? ossrhUsername : ""
+                password = project.hasProperty("ossrhPassword") ? ossrhPassword : ""
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.maven
 }
 
 gem {
-    authors = [ "Kazuyuki Honda" ]
-    email = [ "hakobera@gmail.com" ]
+    authors = [ "Kazuyuki Honda", "Dai MIKURUBE" ]
+    email = [ "hakobera@gmail.com", "dmikurube@treasure-data.com" ]
     summary = "Mongodb input plugin for Embulk"
-    homepage = "https://github.com/hakobera/embulk-input-mongodb"
+    homepage = "https://github.com/embulk/embulk-input-mongodb"
     licenses = [ "MIT" ]
 }
 
