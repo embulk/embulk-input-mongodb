@@ -19,8 +19,6 @@ import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.DataSource;
-import org.embulk.config.DataSourceImpl;
-import org.embulk.config.ModelManager;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.BufferAllocator;
@@ -31,6 +29,9 @@ import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
 import org.embulk.spi.type.Types;
+import org.embulk.util.config.ConfigMapper;
+import org.embulk.util.config.ConfigMapperFactory;
+import org.embulk.util.config.TaskMapper;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,11 +51,15 @@ public class MongodbInputPlugin
 {
     private final Logger log = LoggerFactory.getLogger(MongodbInputPlugin.class);
 
+    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
+
     @Override
     public ConfigDiff transaction(ConfigSource config,
             InputPlugin.Control control)
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
+        final PluginTask task = configMapper.map(config, PluginTask.class);
+
         if (task.getFields().isPresent()) {
             throw new ConfigException("field option was deprecated so setting will be ignored");
         }
@@ -112,7 +117,7 @@ public class MongodbInputPlugin
     {
         List<TaskReport> report = control.run(taskSource, schema, taskCount);
 
-        ConfigDiff configDiff = Exec.newConfigDiff();
+        ConfigDiff configDiff = CONFIG_MAPPER_FACTORY.newConfigDiff();
         if (report.size() > 0 && report.get(0).has("last_record")) {
             configDiff.set("last_record", report.get(0).get(Map.class, "last_record"));
         }
@@ -133,7 +138,8 @@ public class MongodbInputPlugin
             Schema schema, int taskIndex,
             PageOutput output)
     {
-        PluginTask task = taskSource.loadTask(PluginTask.class);
+        final TaskMapper taskMapper = CONFIG_MAPPER_FACTORY.createTaskMapper();
+        final PluginTask task = taskMapper.map(taskSource, PluginTask.class);
         BufferAllocator allocator = Exec.getBufferAllocator();
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
         final Column column = pageBuilder.getSchema().getColumns().get(0);
@@ -206,12 +212,12 @@ public class MongodbInputPlugin
         }
 
         pageBuilder.finish();
-        return updateTaskReport(Exec.newTaskReport(), valueCodec, task);
+        return updateTaskReport(CONFIG_MAPPER_FACTORY.newTaskReport(), valueCodec, task);
     }
 
     private TaskReport updateTaskReport(TaskReport report, ValueCodec valueCodec, PluginTask task)
     {
-        DataSource lastRecord = new DataSourceImpl(Exec.getInjector().getInstance(ModelManager.class));
+        final TaskReport lastRecord = CONFIG_MAPPER_FACTORY.newTaskReport();
         if (valueCodec.getLastRecord() != null && valueCodec.getProcessedRecordCount() > 0) {
             for (String k : valueCodec.getLastRecord().keySet()) {
                 String value = valueCodec.getLastRecord().get(k).toString();
@@ -259,7 +265,7 @@ public class MongodbInputPlugin
     @Override
     public ConfigDiff guess(ConfigSource config)
     {
-        return Exec.newConfigDiff();
+        return CONFIG_MAPPER_FACTORY.newConfigDiff();
     }
 
     private MongoDatabase connect(final PluginTask task) throws UnknownHostException, MongoException

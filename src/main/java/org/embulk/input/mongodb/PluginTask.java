@@ -1,11 +1,9 @@
 package org.embulk.input.mongodb;
 
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
-import org.embulk.config.ConfigInject;
-import org.embulk.config.Task;
-import org.embulk.spi.BufferAllocator;
-import org.embulk.spi.SchemaConfig;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
+import org.embulk.util.config.Task;
+import org.embulk.util.config.units.SchemaConfig;
 
 import javax.validation.constraints.Min;
 
