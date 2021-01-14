@@ -18,7 +18,6 @@ import org.bson.json.JsonParseException;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
-import org.embulk.config.DataSource;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.BufferAllocator;
@@ -38,13 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class MongodbInputPlugin
         implements InputPlugin
@@ -95,11 +88,8 @@ public class MongodbInputPlugin
         validateJsonField("projection", task.getProjection());
         validateJsonField("query", task.getQuery());
         validateJsonField("sort", task.getSort());
-        if (task.getAggregation().isPresent()) {
-            validateJsonField("aggrigation", task.getAggregation().get());
-        }
 
-        // Connect once to throw ConfigException in earlier stage of excecution
+        // Connect once to throw ConfigException in earlier stage of execution
         try {
             connect(task);
         }
@@ -175,10 +165,19 @@ public class MongodbInputPlugin
         }
 
         if (task.getAggregation().isPresent()) {
-            Bson aggregationString = Document.parse(task.getAggregation().get());
-            List<Bson> aggregation = Arrays.asList(aggregationString);
+            Object jsonValue = Document.parse("{\"json\":" + task.getAggregation().get() + "}").get("json");
+            List<Bson> aggregationPipeline;
+            if (jsonValue instanceof List) {
+                aggregationPipeline = (List<Bson>) jsonValue;
+            }
+            else if (jsonValue instanceof Bson) {
+                aggregationPipeline = Collections.singletonList((Bson) jsonValue);
+            }
+            else {
+                throw new ConfigException(String.format("Invalid JSON string was given for 'aggregation' parameter. [%s]", task.getAggregation().get()));
+            }
             try (MongoCursor<Value> cursor = collection
-                    .aggregate(aggregation).iterator()) {
+                    .aggregate(aggregationPipeline).iterator()) {
                 while (cursor.hasNext()) {
                     pageBuilder.setJson(column, cursor.next());
                     pageBuilder.addRecord();

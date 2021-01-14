@@ -55,7 +55,7 @@ public class TestMongodbInputPlugin
 {
     private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
 
-    private final String mongoUri = "mongodb://mongo_user:dbpass@localhost:27017/mydb";
+    private final String mongoUri = "mongodb://localhost:27017/mydb";
     private final String mongoCollection = "my_collection";
 
     @Rule
@@ -431,13 +431,32 @@ public class TestMongodbInputPlugin
     }
 
     @Test
-    public void testRunWithAggregation() throws Exception
+    public void testRunWithAggregationStage() throws Exception
     {
         ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
                 .set("uri", mongoUri)
                 .set("collection", mongoCollection)
                 .set("id_field_name", "int32_field")
-                .set("aggregation", "{ $match: {\"int32_field\":{\"$gte\":5 },} }");
+                .set("aggregation", "{ $match: { int32_field: { $gte: 5 }}}");
+
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
+
+        dropCollection(task, mongoCollection);
+        createCollection(task, mongoCollection);
+        insertDocument(task, createValidDocuments());
+
+        plugin.transaction(config, new Control());
+        assertValidRecordsForAggregation(getFieldSchema(), output);
+    }
+
+    @Test
+    public void testRunWithAggregationPipeline() throws Exception
+    {
+        ConfigSource config = CONFIG_MAPPER_FACTORY.newConfigSource()
+                .set("uri", mongoUri)
+                .set("collection", mongoCollection)
+                .set("id_field_name", "int32_field")
+                .set("aggregation", "[{ $match: { int32_field: { $gte: 1 }}}, { $sort: { int32_field: -1 }}, { $limit: 1 }]");
 
         final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
 
@@ -698,7 +717,7 @@ public class TestMongodbInputPlugin
         mapper.setDateFormat(getUTCDateFormat());
 
         int recordIndex = 0;
-        for (int i = skip; i < actualRecordSize; i++) {
+        for (int i = skip; i < maxRecordSize && i < skip + limit; i++) {
             if (i == 0) {
                 JsonNode node = mapper.readTree(records.get(recordIndex)[0].toString());
                 assertThat(1.23, is(node.get("double_field").asDouble()));
