@@ -55,7 +55,7 @@ public class TestMongodbInputPlugin
 {
     private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
 
-    private final String mongoUri = "mongodb://localhost:27017/mydb";
+    private final String mongoUri = "mongodb://mongo_user:dbpass@localhost:27017/mydb";
     private final String mongoCollection = "my_collection";
 
     @Rule
