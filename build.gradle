@@ -115,6 +115,14 @@ publishing {
                         email = "hakobera@gmail.com"
                     }
                     developer {
+                        name = "Satoshi Akama"
+                        email = "satoshiakama@gmail.com"
+                    }
+                    developer {
+                        name = "Shinichi Ishimura"
+                        email = "shiketaudonko41@gmail.com"
+                    }
+                    developer {
                         name = "Dai MIKURUBE"
                         email = "dmikurube@treasure-data.com"
                     }
