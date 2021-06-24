@@ -1,0 +1,45 @@
+name: Test
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      MONGO_DATABASE: mydb
+      MONGO_COLLECTION: my_collection
+      MONGO_URI: mongodb://localhost:27017/mydb
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: 8
+          distribution: "zulu"
+      - run: mkdir -p ./tmp
+      - run: date
+      - run: docker-compose up -d
+      - run: docker-compose ps
+      - name: Check
+        run: ./gradlew check --console rich --info
+      - name: Install Embulk
+        run: curl --create-dirs -o ~/.embulk/bin/embulk -L "https://dl.embulk.org/embulk-0.10.19.jar"
+      - name: Set Embulk executable
+        run: chmod +x ~/.embulk/bin/embulk
+      - run: ~/.embulk/bin/embulk --version
+      - name: Build a gem
+        run: ./gradlew gem
+      - name: Mongo DB
+        run: mongoimport --host 127.0.0.1 -u mongo_user -p dbpass --db $MONGO_DATABASE --collection $MONGO_COLLECTION --type json --drop src/test/resources/my_collection.jsonl
+      - run: ~/.embulk/bin/embulk run -L build/gemContents src/test/resources/basic.yml
+      - run: cat tmp/basic000.00.csv
+      - run: cmp tmp/basic000.00.csv src/test/resources/basic_expected.csv
+      - run: ~/.embulk/bin/embulk run -L build/gemContents src/test/resources/full.yml
+      - run: cat tmp/full000.00.csv
+      - run: cmp tmp/full000.00.csv src/test/resources/full_expected.csv
+      - run: ~/.embulk/bin/embulk run -L build/gemContents src/test/resources/id_field_name.yml
+      - run: cat tmp/id_field_name000.00.csv
+      - run: cmp tmp/id_field_name000.00.csv src/test/resources/id_field_name_expected.csv
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: tests
+          path: ./*/build/reports/tests/test
