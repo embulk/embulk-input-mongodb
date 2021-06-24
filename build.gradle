@@ -8,11 +8,10 @@ plugins {
 
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 group = "org.embulk"
-version = "0.8.0-SNAPSHOT"
+version = "0.8.1-SNAPSHOT"
 description = "Loads records from Mongodb."
 
 sourceCompatibility = 1.8
@@ -23,14 +22,19 @@ tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 dependencies {
-    compileOnly "org.embulk:embulk-api:0.10.19"
-    compileOnly "org.embulk:embulk-spi:0.10.19"
+    compileOnly "org.embulk:embulk-api:0.10.31"
+    compileOnly "org.embulk:embulk-spi:0.10.31"
     compile "org.mongodb:mongo-java-driver:3.8.1"
 
-    compile("org.embulk:embulk-util-config:0.1.4") {
+    compile("org.embulk:embulk-util-config:0.3.1") {
         // They conflict with embulk-core. They are once excluded here,
-        // and added explicitly with versions exactly the same with embulk-core:0.10.19.
+        // and added explicitly with versions exactly the same with embulk-core:0.10.31.
         exclude group: "com.fasterxml.jackson.core", module: "jackson-annotations"
         exclude group: "com.fasterxml.jackson.core", module: "jackson-core"
         exclude group: "com.fasterxml.jackson.core", module: "jackson-databind"
@@ -39,7 +43,7 @@ dependencies {
     }
 
     // They are once excluded from transitive dependencies of other dependencies,
-    // and added explicitly with versions exactly the same with embulk-core:0.10.19.
+    // and added explicitly with versions exactly the same with embulk-core:0.10.31.
     compile "com.fasterxml.jackson.core:jackson-annotations:2.6.7"
     compile "com.fasterxml.jackson.core:jackson-core:2.6.7"
     compile "com.fasterxml.jackson.core:jackson-databind:2.6.7"
@@ -47,15 +51,9 @@ dependencies {
     compile "javax.validation:validation-api:1.1.0.Final"
 
     testCompile "junit:junit:4.13"
-    testCompile "org.embulk:embulk-core:0.10.19"
-    testCompile "org.embulk:embulk-core:0.10.19:tests"
-    testCompile "org.embulk:embulk-standards:0.10.19"
-    testCompile "org.embulk:embulk-deps:0.10.19"
-}
-
-java {
-    withJavadocJar()
-    withSourcesJar()
+    testCompile "org.embulk:embulk-core:0.10.31"
+    testCompile "org.embulk:embulk-core:0.10.31:tests"
+    testCompile "org.embulk:embulk-deps:0.10.31"
 }
 
 test {
@@ -85,11 +83,19 @@ embulkPlugin {
 
 publishing {
     publications {
-        maven(MavenPublication) {  // Publish it with "publishMavenPublicationToMavenCentralRepository".
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+
             from components.java  // Must be "components.java". The dependency modification works only for it.
+            // javadocJar and sourcesJar are added by java.withJavadocJar() and java.withSourcesJar() above.
+            // See: https://docs.gradle.org/current/javadoc/org/gradle/api/plugins/JavaPluginExtension.html
 
             pom {  // https://central.sonatype.org/pages/requirements.html
                 packaging "jar"
+
+                name = project.name
+                description = project.description
                 url = "https://www.embulk.org/"
 
                 licenses {
