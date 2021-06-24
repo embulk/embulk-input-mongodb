@@ -1,0 +1,15 @@
+embulk-input-mongodb
+Copyright 2015 Kazuyuki Honda, and the Embulk project
+
+The gem distribution of this product includes software developed by Kazuyuki Honda, and in a part of the Embulk project (https://www.embulk.org/).
+It was originally developed by Kazuyuki Honda (https://github.com/hakobera), and then transferred to the Embulk project.
+It was originally licenced under the MIT License before the transfer, and it is now licensed under the Apache Software License, Version 2.0.
+
+The gem distribution of this product includes JARs of the Jackson project (https://github.com/FasterXML/jackson), as-is.
+They are licensed under the Apache Software License, Version 2.0.
+
+The gem distribution of this product includes JARs of the Jakarta Bean Validation API 1.1 (https://beanvalidation.org/1.1/), as-is.
+It is licensed under the Apache Software License, Version 2.0.
+
+The gem distribution of this product includes a JAR of MongoDB Java Driver (https://mongodb.github.io/mongo-java-driver/), as-is.
+It is licensed under the Apache Software License, Version 2.0.
