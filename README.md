@@ -173,6 +173,28 @@ in:
   type: mongodb
   aggregation: { $match: {"int32_field":{"$gte":5 },} }
 ```
+or
+```yaml
+in:
+  type: mongodb
+  aggregation: >
+    [
+      { 
+        $match: {
+          int32_field: { $gte: 1 }
+        }
+      },
+      {
+        $sort: {
+          int32_field: -1
+        }
+      },
+      {
+        $limit: 1
+      }
+    ]
+
+```
 
 See also [Aggregation — MongoDB Manual](https://docs.mongodb.com/manual/aggregation/) and [Aggregation Pipeline Stages — MongoDB Manual](https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/)
 
