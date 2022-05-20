@@ -39,6 +39,14 @@ public interface PluginTask
     @ConfigDefault("null")
     Optional<List<HostTask>> getHosts();
 
+    @Config("tls_enable")
+    @ConfigDefault("false")
+    boolean getTlsEnable();
+
+    @Config("tls_insecure")
+    @ConfigDefault("false")
+    boolean getTlsInsecure();
+
     @Config("auth_method")
     @ConfigDefault("null")
     Optional<AuthMethod> getAuthMethod();

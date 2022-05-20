@@ -26,6 +26,8 @@ This plugin only works with embulk >= 0.8.8.
     - **user**: (string, optional)
     - **password**:  (string, optional)
     - **database**:  (string, required)
+    - **tls_enable**: enable/disable tls (boolean, optional, default false)
+    - **tls_insecure**: enable/disable certificate and host validation (boolean, optional, default false)
 - **collection**: source collection name (string, required)
 - **fields**: **(deprecated)** ~~hash records that has the following two fields (array, required)~~
   ~~- name: Name of the column~~
