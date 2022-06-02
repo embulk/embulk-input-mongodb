@@ -242,7 +242,7 @@ public class TestMongodbInputPlugin
     {
         final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
                 configForAuth().deepCopy()
-                        .set("tls_enable", "true")
+                        .set("tls", "true")
                         .set("tls_insecure", "true"),
                 PluginTask.class);
         Method createMongoClientOptions = MongodbInputPlugin.class.getDeclaredMethod("createMongoClientOptions", PluginTask.class);
@@ -257,7 +257,7 @@ public class TestMongodbInputPlugin
     {
         final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
                 configForAuth().deepCopy()
-                        .set("tls_enable", "true"),
+                        .set("tls", "true"),
                 PluginTask.class);
         Method createMongoClientOptions = MongodbInputPlugin.class.getDeclaredMethod("createMongoClientOptions", PluginTask.class);
         createMongoClientOptions.setAccessible(true);
@@ -271,7 +271,7 @@ public class TestMongodbInputPlugin
     {
         final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
                 configForAuth().deepCopy()
-                        .set("tls_enable", "false"),
+                        .set("tls", "false"),
                 PluginTask.class);
         Method createMongoClientOptions = MongodbInputPlugin.class.getDeclaredMethod("createMongoClientOptions", PluginTask.class);
         createMongoClientOptions.setAccessible(true);

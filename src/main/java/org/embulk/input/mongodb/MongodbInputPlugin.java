@@ -340,7 +340,7 @@ public class MongodbInputPlugin
     private MongoClientOptions createMongoClientOptions(PluginTask task)
     {
         MongoClientOptions.Builder builder = new MongoClientOptions.Builder();
-        if (task.getTlsEnable()) {
+        if (task.getTls()) {
             builder.sslEnabled(true);
             if (task.getTlsInsecure()) {
                 builder.sslInvalidHostNameAllowed(true);

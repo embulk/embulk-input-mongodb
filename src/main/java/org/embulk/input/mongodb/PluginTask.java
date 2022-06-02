@@ -39,10 +39,11 @@ public interface PluginTask
     @ConfigDefault("null")
     Optional<List<HostTask>> getHosts();
 
-    @Config("tls_enable")
+    @Config("tls")
     @ConfigDefault("false")
-    boolean getTlsEnable();
+    boolean getTls();
 
+    // similar to option supported by mongo command (https://www.mongodb.com/docs/manual/reference/connection-string/#mongodb-urioption-urioption.tlsInsecure)
     @Config("tls_insecure")
     @ConfigDefault("false")
     boolean getTlsInsecure();
