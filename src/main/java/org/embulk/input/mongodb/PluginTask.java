@@ -43,7 +43,8 @@ public interface PluginTask
     @ConfigDefault("false")
     boolean getTls();
 
-    // similar to option supported by mongo command (https://www.mongodb.com/docs/manual/reference/connection-string/#mongodb-urioption-urioption.tlsInsecure)
+    // The option is similar to an option of the official `mongo` command.
+    // (https://www.mongodb.com/docs/manual/reference/connection-string/#mongodb-urioption-urioption.tlsInsecure)
     @Config("tls_insecure")
     @ConfigDefault("false")
     boolean getTlsInsecure();

@@ -344,13 +344,13 @@ public class MongodbInputPlugin
             builder.sslEnabled(true);
             if (task.getTlsInsecure()) {
                 builder.sslInvalidHostNameAllowed(true);
-                builder.sslContext(createAcceptAllCertificate());
+                builder.sslContext(createSSLContextToAcceptAnyCert());
             }
         }
         return builder.build();
     }
 
-    private SSLContext createAcceptAllCertificate()
+    private SSLContext createSSLContextToAcceptAnyCert()
     {
         TrustManager[] trustAllCerts = new TrustManager[] {
                 new X509TrustManager()
