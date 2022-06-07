@@ -19,6 +19,7 @@ package org.embulk.input.mongodb;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoClientURI;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
@@ -34,7 +35,6 @@ import org.bson.json.JsonParseException;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
-import org.embulk.config.DataSource;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.BufferAllocator;
@@ -52,8 +52,14 @@ import org.msgpack.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -123,7 +129,7 @@ public class MongodbInputPlugin
             throw new ConfigException(ex);
         }
         Schema schema = Schema.builder().add(task.getJsonColumnName(), Types.JSON).build();
-        return resume(task.dump(), schema, 1, control);
+        return resume(task.toTaskSource(), schema, 1, control);
     }
 
     @Override
@@ -157,7 +163,7 @@ public class MongodbInputPlugin
         final TaskMapper taskMapper = CONFIG_MAPPER_FACTORY.createTaskMapper();
         final PluginTask task = taskMapper.map(taskSource, PluginTask.class);
         BufferAllocator allocator = Exec.getBufferAllocator();
-        PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
+        PageBuilder pageBuilder = Exec.getPageBuilder(allocator, schema, output);
         final Column column = pageBuilder.getSchema().getColumns().get(0);
 
         ValueCodec valueCodec = new ValueCodec(task.getStopOnInvalidRecord(), task);
@@ -324,10 +330,52 @@ public class MongodbInputPlugin
         }
 
         if (task.getUser().isPresent()) {
-            return new MongoClient(addresses, Arrays.asList(createCredential(task)));
+            return new MongoClient(addresses, Arrays.asList(createCredential(task)), createMongoClientOptions(task));
         }
         else {
-            return new MongoClient(addresses);
+            return new MongoClient(addresses, createMongoClientOptions(task));
+        }
+    }
+
+    private MongoClientOptions createMongoClientOptions(PluginTask task)
+    {
+        MongoClientOptions.Builder builder = new MongoClientOptions.Builder();
+        if (task.getTls()) {
+            builder.sslEnabled(true);
+            if (task.getTlsInsecure()) {
+                builder.sslInvalidHostNameAllowed(true);
+                builder.sslContext(createSSLContextToAcceptAnyCert());
+            }
+        }
+        return builder.build();
+    }
+
+    private SSLContext createSSLContextToAcceptAnyCert()
+    {
+        TrustManager[] trustAllCerts = new TrustManager[] {
+                new X509TrustManager()
+                {
+                    public X509Certificate[] getAcceptedIssuers()
+                    {
+                        return new X509Certificate[0];
+                    }
+                    public void checkClientTrusted(
+                            X509Certificate[] certs, String authType)
+                    {
+                    }
+                    public void checkServerTrusted(
+                            X509Certificate[] certs, String authType)
+                    {
+                    }
+                }
+        };
+        try {
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            return sc;
+        }
+        catch (NoSuchAlgorithmException | KeyManagementException e) {
+            throw new ConfigException(e);
         }
     }
 

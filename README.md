@@ -26,6 +26,10 @@ This plugin only works with embulk >= 0.8.8.
     - **user**: (string, optional)
     - **password**:  (string, optional)
     - **database**:  (string, required)
+    - **tls**: `true` to use TLS to connect to the host (boolean, optional, default: `false`)
+    - **tls_insecure**: `true` to disable various certificate validations (boolean, optional, default: `false`)
+      - The option is similar to an option of the official `mongo` command.
+      - See also: https://www.mongodb.com/docs/manual/reference/connection-string/#mongodb-urioption-urioption.tlsInsecure
 - **collection**: source collection name (string, required)
 - **fields**: **(deprecated)** ~~hash records that has the following two fields (array, required)~~
   ~~- name: Name of the column~~

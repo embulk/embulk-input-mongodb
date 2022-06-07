@@ -11,7 +11,7 @@ repositories {
 }
 
 group = "org.embulk"
-version = "0.8.1-SNAPSHOT"
+version = "0.8.2-SNAPSHOT"
 description = "Loads records from Mongodb."
 
 sourceCompatibility = 1.8

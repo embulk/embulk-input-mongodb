@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoClientURI;
 import com.mongodb.MongoCredential;
 import com.mongodb.client.MongoCollection;
@@ -40,7 +41,6 @@ import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.spi.Column;
-import org.embulk.spi.Exec;
 import org.embulk.spi.InputPlugin;
 import org.embulk.spi.Schema;
 import org.embulk.spi.TestPageBuilderReader.MockPageOutput;
@@ -238,11 +238,54 @@ public class TestMongodbInputPlugin
     }
 
     @Test
+    public void testCreateMongoClientOptionsTLSEnableWithInsecureEnable() throws Exception
+    {
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
+                configForAuth().deepCopy()
+                        .set("tls", "true")
+                        .set("tls_insecure", "true"),
+                PluginTask.class);
+        Method createMongoClientOptions = MongodbInputPlugin.class.getDeclaredMethod("createMongoClientOptions", PluginTask.class);
+        createMongoClientOptions.setAccessible(true);
+        MongoClientOptions mongoClientOptions = (MongoClientOptions) createMongoClientOptions.invoke(plugin, task);
+        assertThat(true, is(mongoClientOptions.isSslEnabled()));
+        assertThat(true, is(mongoClientOptions.isSslInvalidHostNameAllowed()));
+    }
+
+    @Test
+    public void testCreateMongoClientOptionsTLSEnableWithInsecureDisable() throws Exception
+    {
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
+                configForAuth().deepCopy()
+                        .set("tls", "true"),
+                PluginTask.class);
+        Method createMongoClientOptions = MongodbInputPlugin.class.getDeclaredMethod("createMongoClientOptions", PluginTask.class);
+        createMongoClientOptions.setAccessible(true);
+        MongoClientOptions mongoClientOptions = (MongoClientOptions) createMongoClientOptions.invoke(plugin, task);
+        assertThat(true, is(mongoClientOptions.isSslEnabled()));
+        assertThat(false, is(mongoClientOptions.isSslInvalidHostNameAllowed()));
+    }
+
+    @Test
+    public void testCreateMongoClientOptionsTLSDisable() throws Exception
+    {
+        final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(
+                configForAuth().deepCopy()
+                        .set("tls", "false"),
+                PluginTask.class);
+        Method createMongoClientOptions = MongodbInputPlugin.class.getDeclaredMethod("createMongoClientOptions", PluginTask.class);
+        createMongoClientOptions.setAccessible(true);
+        MongoClientOptions mongoClientOptions = (MongoClientOptions) createMongoClientOptions.invoke(plugin, task);
+        assertThat(false, is(mongoClientOptions.isSslEnabled()));
+        assertThat(false, is(mongoClientOptions.isSslInvalidHostNameAllowed()));
+    }
+
+    @Test
     public void testResume()
     {
         final PluginTask task = CONFIG_MAPPER_FACTORY.createConfigMapper().map(config, PluginTask.class);
         final Schema schema = getFieldSchema();
-        plugin.resume(task.dump(), schema, 0, new InputPlugin.Control() {
+        plugin.resume(task.toTaskSource(), schema, 0, new InputPlugin.Control() {
             @Override
             public List<TaskReport> run(TaskSource taskSource, Schema schema, int taskCount)
             {
