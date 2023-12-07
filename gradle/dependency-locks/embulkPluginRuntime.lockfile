@@ -7,4 +7,4 @@ com.fasterxml.jackson.core:jackson-databind:2.6.7
 com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.6.7
 javax.validation:validation-api:1.1.0.Final
 org.embulk:embulk-util-config:0.3.1
-org.mongodb:mongo-java-driver:3.8.1
+org.mongodb:mongo-java-driver:4.3.4
